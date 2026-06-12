@@ -268,7 +268,7 @@ function freshState(){
     rows:4,
     grid:new Array(16).fill(null),   /* {id, st?} or null */
     bench:[{id:'dyn'},{id:'dyn'},{id:'amp'},{id:'cnv'}],
-    money:8, round:1, score:0, lastRun:0, streak:0, adv:true,
+    money:8, round:1, score:0, raw:0, lastRun:0, streak:0, adv:true,
     shop:[], sold:[false,false,false,false],
     sel:null, running:false,
     rngN:0, moveLog:[],
@@ -277,7 +277,7 @@ function freshState(){
 function fresh(){
   S=freshState();
   settings={mode:null};
-  meta={created:Date.now(),updated:Date.now(),dayNum};
+  meta={created:Date.now(),updated:Date.now(),dayNum,seed:seedString};
   _raw=mulberry32(strSeed(seedString));
 }
 function quota(n){return Math.round(15*Math.pow(1.5,n-1))}
@@ -318,9 +318,10 @@ function load(){
   let d=null;
   try{d=JSON.parse(raw)}catch(e){return 'bad'}
   if(!d||d.schema!==1||!d.state||!d.settings)return 'bad';
-  if(!d.meta||d.meta.dayNum!==dayNum)return 'stale';   /* new daily seed → new engine */
+  if(!d.meta||d.meta.seed!==seedString)return 'stale'; /* new seed (new period) → new engine */
   S=d.state;S.sel=null;S.running=false;
   settings=d.settings;meta=d.meta;
+  if(window.EWL)EWL.moveLog=(S.moveLog||[]).slice();
   /* replay the rng stream to its saved position */
   _raw=mulberry32(strSeed(seedString));
   for(let k=0;k<(S.rngN||0);k++)_raw();
@@ -600,6 +601,7 @@ async function runEngine(){
   const q=quota(S.round),n=S.round;
   const gain=Math.round(f.pts*MULT[settings.mode]);
   S.score+=gain;
+  S.raw=(S.raw||0)+f.pts;   /* raw total: server applies the mode multiplier (it is authoritative) */
   const banked=Object.values(f.st).reduce((a,b)=>a+b,0);
   let diag='';
   if(f.wasted>0)diag+=`<br><br><b style="color:var(--red)">WASTED ${f.wasted}⚡</b> — charge above conversion capacity at your converters. Add ▣/⬡ capacity, relay-boost one, or bank it in a ▥ Capacitor.`;
@@ -634,7 +636,7 @@ async function runEngine(){
   S.running=false;
   save();
   if(window.EWL&&EWL.submitScore){
-    try{EWL.submitScore({score:S.score,round:S.round,mode:settings.mode})}catch(e){}
+    try{EWL.submitScore({score:S.raw||0,round:S.round,mode:settings.mode})}catch(e){}
   }
   $('roundOv').classList.remove('hidden');
 }
