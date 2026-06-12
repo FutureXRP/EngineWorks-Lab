@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>DYNAMO — the daily engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0F1112;
+  --panel:#171A1B;
+  --raised:#1F2425;
+  --line:#2E3536;
+  --line-hi:#475052;
+  --ink:#E9E4D4;
+  --ink-dim:#8E9697;
+  --amber:#FFB13D;
+  --amber-dim:#8A6230;
+  --olive:#A9B665;
+  --olive-dim:#5C6336;
+  --gold:#E8C268;
+  --green:#8BD17C;
+  --red:#E06A5A;
+  --disp:'Chakra Petch','Arial Narrow',sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  background:var(--bg);color:var(--ink);
+  font-family:var(--mono);font-size:14px;
+  display:flex;flex-direction:column;
+  max-width:520px;margin:0 auto;overflow-x:hidden;
+  user-select:none;-webkit-user-select:none;
+}
+header{padding:10px 14px 8px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#16180F,#101310)}
+.brand{display:flex;align-items:baseline;justify-content:space-between}
+.brand h1{font-family:var(--disp);font-weight:700;font-size:18px;letter-spacing:.18em}
+.brand h1 span{color:var(--amber)}
+.daytag{font-size:11px;color:var(--ink-dim);letter-spacing:.08em}
+.subrow{display:flex;justify-content:space-between;align-items:center;margin-top:4px}
+.rank{font-size:10px;letter-spacing:.16em;color:var(--olive);text-transform:uppercase}
+.badge{font-size:9px;letter-spacing:.12em;color:var(--amber);border:1px solid var(--amber-dim);border-radius:3px;padding:2px 6px;text-transform:uppercase}
+.stats{display:flex;gap:8px;margin-top:8px}
+.stat{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:5px 8px;text-align:center}
+.stat .lbl{font-size:9px;letter-spacing:.14em;color:var(--ink-dim);text-transform:uppercase}
+.stat .val{font-size:16px;font-weight:600;margin-top:1px}
+.stat .val.gold{color:var(--gold)}
+.stat .val.amber{color:var(--amber)}
+.stat .val.green{color:var(--green)}
+.gauge-wrap{margin-top:8px}
+.gauge-row{display:flex;justify-content:space-between;font-size:10px;color:var(--ink-dim);letter-spacing:.1em;margin-bottom:3px}
+.gauge-row b{color:var(--ink);font-weight:600}
+.gauge{height:14px;background:#0A0C0D;border:1px solid var(--line);border-radius:3px;position:relative;overflow:hidden}
+.gauge .ghost{position:absolute;inset:0;width:0%;background:rgba(255,177,61,.14);border-right:1px dashed var(--amber-dim);transition:width .2s ease}
+.gauge .fill{position:absolute;inset:0;width:0%;background:linear-gradient(90deg,#8A6230,var(--amber));transition:width .25s ease}
+.gauge .fill.met{background:linear-gradient(90deg,#4E7A47,var(--green))}
+.gauge .ticks{position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 9%,rgba(0,0,0,.45) 9% 10%)}
+main{flex:1;display:flex;flex-direction:column;padding:12px 14px 0;gap:10px;overflow-y:auto}
+.sect-lbl{font-size:10px;letter-spacing:.18em;color:var(--ink-dim);text-transform:uppercase;display:flex;justify-content:space-between;align-items:center}
+#grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px}
+.cell{aspect-ratio:1;border:1px dashed var(--line);border-radius:5px;display:flex;align-items:center;justify-content:center;position:relative;background:#121512;transition:border-color .15s,box-shadow .15s,background .15s}
+.cell.droppable{border-color:var(--amber-dim)}
+.cell.firing{border-color:var(--amber);border-style:solid;background:#241D0F;box-shadow:0 0 14px rgba(255,177,61,.35)}
+.cell.firing-pt{border-color:var(--green);border-style:solid;background:#15220F;box-shadow:0 0 14px rgba(139,209,124,.35)}
+.cell.firing-st{border-color:var(--olive);border-style:solid;background:#1B2012;box-shadow:0 0 14px rgba(169,182,101,.3)}
+.piece{width:92%;height:92%;border-radius:5px;border:1px solid var(--line-hi);background:linear-gradient(180deg,var(--raised),#1A1E19);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;cursor:pointer;position:relative}
+.piece.sel{border-color:var(--amber);box-shadow:0 0 0 2px rgba(255,177,61,.35)}
+.piece .ic{font-size:18px;line-height:1.15}
+.piece .rd{font-size:7.5px;letter-spacing:0;color:var(--ink-dim);white-space:nowrap;max-width:100%;overflow:hidden}
+.piece .rd.pw{color:var(--amber)}
+.piece .rd.wt{color:var(--green)}
+.piece .rd.st{color:var(--olive)}
+.piece.gen .ic{color:var(--amber)}
+.piece.bst .ic{color:var(--gold)}
+.piece.cnv .ic{color:var(--green)}
+.piece.sto .ic,.piece.utl .ic{color:var(--olive)}
+#bench{min-height:62px;display:flex;gap:7px;align-items:center;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px}
+#bench .piece{width:52px;height:52px}
+#bench .empty-note{font-size:11px;color:var(--ink-dim);padding:4px 6px}
+#info{min-height:44px;border-left:3px solid var(--amber-dim);background:var(--panel);border-radius:0 5px 5px 0;padding:7px 10px;font-size:11.5px;line-height:1.45;color:var(--ink-dim);display:flex;align-items:center;justify-content:space-between;gap:8px}
+#info b{color:var(--ink)}
+#info .act{display:flex;gap:6px;flex-shrink:0}
+#shop{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.shopcard{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 4px 6px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;transition:border-color .15s;position:relative}
+.shopcard.sel{border-color:var(--gold)}
+.shopcard.sold{opacity:.28;pointer-events:none}
+.shopcard .ic{font-size:19px}
+.shopcard .nm{font-size:8.5px;letter-spacing:.03em;color:var(--ink-dim);text-transform:uppercase;text-align:center}
+.shopcard .pr{font-size:11px;color:var(--gold);font-weight:600}
+button{font-family:var(--disp);letter-spacing:.12em;font-weight:600;border:1px solid var(--line-hi);background:var(--raised);color:var(--ink);border-radius:5px;padding:8px 12px;font-size:12px;cursor:pointer}
+button:active{transform:translateY(1px)}
+button:disabled{opacity:.35;pointer-events:none}
+button.small{padding:5px 9px;font-size:10px}
+button.danger{border-color:#6B3A33;color:var(--red)}
+#runbar{position:sticky;bottom:0;padding:10px 14px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(180deg,transparent,#0F1112 30%);display:flex;gap:8px}
+#runBtn{flex:1;font-size:15px;padding:13px;letter-spacing:.25em;background:linear-gradient(180deg,#33270F,#241D10);border:1px solid var(--amber-dim);color:var(--amber)}
+.floater{position:absolute;left:50%;top:0;transform:translateX(-50%);font-family:var(--mono);font-weight:600;font-size:12px;pointer-events:none;animation:floatUp .9s ease-out forwards;white-space:nowrap;z-index:5}
+.floater.charge{color:var(--amber)}
+.floater.pts{color:var(--green)}
+.floater.store{color:var(--olive)}
+@keyframes floatUp{from{opacity:1;top:8%}to{opacity:0;top:-55%}}
+@media (prefers-reduced-motion: reduce){.floater{animation:none;opacity:0}.gauge .fill,.gauge .ghost{transition:none}}
+.overlay{position:fixed;inset:0;background:rgba(10,12,13,.9);z-index:50;display:flex;align-items:center;justify-content:center;padding:20px}
+.overlay.hidden{display:none}
+#confirmOv{z-index:60}
+.modal{background:var(--panel);border:1px solid var(--line-hi);border-radius:8px;padding:22px 20px;max-width:380px;width:100%;max-height:90vh;overflow-y:auto}
+.modal h2{font-family:var(--disp);letter-spacing:.18em;font-size:17px;margin-bottom:12px}
+.modal h2 span{color:var(--amber)}
+.modal p{font-size:12.5px;line-height:1.6;color:var(--ink-dim);margin-bottom:10px}
+.modal p b{color:var(--ink)}
+.modal .btnrow{display:flex;gap:8px;margin-top:14px}
+.modal .btnrow button{flex:1}
+.legend{display:grid;grid-template-columns:auto 1fr;gap:5px 10px;font-size:11.5px;margin:10px 0;color:var(--ink-dim)}
+.legend .ic{text-align:center}
+.legend b{color:var(--ink)}
+.modecard{border:1px solid var(--line);border-radius:6px;background:var(--raised);padding:9px 11px;cursor:pointer;margin-top:7px;display:block;width:100%;text-align:left}
+.modecard .mn{font-family:var(--disp);font-size:12px;letter-spacing:.14em;color:var(--ink)}
+.modecard .mn span{color:var(--gold);float:right}
+.modecard .md{font-family:var(--mono);font-size:10.5px;color:var(--ink-dim);letter-spacing:0;font-weight:400;margin-top:2px;text-transform:none}
+.modecard.sel{border-color:var(--amber);box-shadow:0 0 0 1px rgba(255,177,61,.3)}
+.modecard.sel .mn{color:var(--amber)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>DY<span>NAMO</span></h1>
+    <div class="daytag" id="dayTag"></div>
+  </div>
+  <div class="subrow">
+    <div class="rank" id="rankLbl">Apprentice</div>
+    <div class="badge" id="modeBadge">—</div>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="lbl">Round</div><div class="val" id="stRound">1</div></div>
+    <div class="stat"><div class="lbl">Credits</div><div class="val gold" id="stMoney">$8</div></div>
+    <div class="stat"><div class="lbl">Output</div><div class="val amber" id="stRun">0</div></div>
+    <div class="stat"><div class="lbl">Score</div><div class="val green" id="stScore">0</div></div>
+  </div>
+  <div class="gauge-wrap">
+    <div class="gauge-row"><span>QUOTA <b id="quotaLbl">15</b>pt</span><span id="storedLbl"></span></div>
+    <div class="gauge"><div class="ghost" id="gaugeGhost"></div><div class="fill" id="gaugeFill"></div><div class="ticks"></div></div>
+  </div>
+</header>
+
+<main>
+  <div class="sect-lbl"><span>Engine Floor</span><button class="small" id="rowBtn">+ROW $12</button></div>
+  <div id="grid"></div>
+
+  <div id="info"><span id="infoText">Generators feed one <b>shared pool</b>; converters drink it in <b>reading order</b>. Adjacency is orthogonal. Tap a part, then tap a cell to move it.</span>
+    <span class="act" id="infoAct"></span>
+  </div>
+
+  <div class="sect-lbl"><span>Bench</span></div>
+  <div id="bench"></div>
+
+  <div class="sect-lbl"><span>Parts Depot</span><button class="small" id="rerollBtn">REROLL $2</button></div>
+  <div id="shop"></div>
+
+  <div style="display:flex;justify-content:center;padding:6px 0 2px">
+    <button class="small danger" id="scrapBtn">SCRAP ENGINE</button>
+  </div>
+</main>
+
+<div id="runbar">
+  <button id="runBtn">RUN ENGINE</button>
+</div>
+
+<div class="overlay" id="introOv">
+  <div class="modal">
+    <h2>DY<span>NAMO</span> · the daily engine</h2>
+    <p>Build an engine on the grid. Each run resolves in order: <b>stored charge releases → generators fire (reading order) → converters drink the pool → capacitors bank leftovers ≤40⚡ → anything left is WASTED</b>.</p>
+    <div class="legend">
+      <span class="ic" style="color:var(--amber)">⚙ ◉ ✪</span><span><b>Generators</b> — make ⚡ charge into the shared pool</span>
+      <span class="ic" style="color:var(--gold)">◈ ❋ ⧉ ↯</span><span><b>Boosters</b> — Amp ×2 / Coil ×3 neighbors · Relay double-triggers neighbors · Overclock +4⚡ base globally</span>
+      <span class="ic" style="color:var(--green)">▣ ⬡</span><span><b>Converters</b> — turn pooled ⚡ into points, in reading order</span>
+      <span class="ic" style="color:var(--olive)">▥</span><span><b>Capacitor</b> — banks ≤40⚡ leftover for next run</span>
+      <span class="ic" style="color:var(--olive)">∿ ◫</span><span><b>Fuse</b> burns to absorb a missed quota · <b>Meter</b> restores readouts in MANUAL</span>
+    </div>
+    <p>Meet the quota to get paid; miss it and the engine <b>STALLS</b> — $2 subsidy, the quota waits. Pick your instrumentation (locked for the run):</p>
+    <button class="modecard sel" data-m="ASSISTED"><span class="mn">ASSISTED <span>×1.0</span></span><div class="md">Full ghost projection, per-cell readouts, waste warnings.</div></button>
+    <button class="modecard" data-m="STANDARD"><span class="mn">STANDARD <span>×1.25</span></span><div class="md">Projected total only — consequences revealed by the run.</div></button>
+    <button class="modecard" data-m="MANUAL"><span class="mn">MANUAL <span>×1.5</span></span><div class="md">No projections. Buy Meters ◫ to restore readouts.</div></button>
+    <div class="btnrow"><button id="startBtn">SPIN IT UP</button></div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="roundOv">
+  <div class="modal">
+    <h2 id="roundTitle">QUOTA <span>MET</span></h2>
+    <p id="roundText"></p>
+    <div class="btnrow"><button id="nextBtn">CONTINUE</button></div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="confirmOv">
+  <div class="modal">
+    <h2 id="cfTitle"></h2>
+    <p id="cfText"></p>
+    <div class="btnrow"><button id="cfCancel">CANCEL</button><button class="danger" id="cfOk"></button></div>
+  </div>
+</div>
+
+<script src="../platform.js"></script>
+<script>
+/* ============ seeded rng ============ */
+function strSeed(s){let h=1779033703^s.length;for(let i=0;i<s.length;i++){h=Math.imul(h^s.charCodeAt(i),3432918353);h=h<<13|h>>>19}return h>>>0}
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const EPOCH=new Date(Date.UTC(2026,0,1));
+const today=new Date();
+const dayNum=Math.floor((Date.UTC(today.getFullYear(),today.getMonth(),today.getDate())-EPOCH)/86400000)+1;
+
+/* ============ platform ============ */
+let ctx=null;
+try{ctx=window.EWL?EWL.boot({game:'dynamo'}):null}catch(e){ctx=null}
+const seedString=(ctx&&ctx.seedString)||('dynamo-day-'+dayNum);
+const saveKey=(ctx&&ctx.saveKey)||'ewl.dynamo.v1';
+let _raw=mulberry32(strSeed(seedString));
+function rng(){S.rngN=(S.rngN||0)+1;return _raw()}
+
+/* ============ parts ============ */
+/* cl: gen=generator bst=booster cnv=converter sto=storage utl=utility */
+const PARTS={
+  dyn:{n:'Dynamo',ic:'⚙',cl:'gen',cost:3,rar:'c',tag:'5⚡',
+    d:'Generator. <b>5⚡</b> base into the shared pool.'},
+  rea:{n:'Reactor',ic:'◉',cl:'gen',cost:6,rar:'u',tag:'12⚡',
+    d:'Generator. <b>12⚡</b> base. Steady heavy plant.'},
+  tbn:{n:'Turbine',ic:'✪',cl:'gen',cost:9,rar:'r',tag:'20⚡',
+    d:'Generator. <b>20⚡</b> base. The big iron.'},
+  amp:{n:'Amp',ic:'◈',cl:'bst',cost:5,rar:'c',tag:'×2',
+    d:'Booster. Adjacent generators output <b>×2</b>. Stacks multiplicatively with other amps/coils.'},
+  coil:{n:'Coil',ic:'❋',cl:'bst',cost:9,rar:'r',tag:'×3',
+    d:'Booster. Adjacent generators output <b>×3</b>. Stacks multiplicatively.'},
+  rel:{n:'Relay',ic:'⧉',cl:'bst',cost:7,rar:'u',tag:'2×trig',
+    d:'Adjacent parts trigger twice: generators ×(1+relays) output, converters ×(1+relays) capacity.'},
+  ovc:{n:'Overclock',ic:'↯',cl:'bst',cost:8,rar:'u',tag:'+4⚡',
+    d:'Global. Every generator gains <b>+4⚡ base</b> per Overclock, anywhere on the grid.'},
+  cnv:{n:'Converter',ic:'▣',cl:'cnv',cost:4,rar:'c',tag:'≤30⚡',
+    d:'Drinks up to <b>30⚡</b> from the pool at <b>1pt per ⚡</b>, in reading order.'},
+  ref:{n:'Refinery',ic:'⬡',cl:'cnv',cost:7,rar:'u',tag:'≤60⚡',
+    d:'Drinks up to <b>60⚡</b> from the pool at <b>1.5pt per ⚡</b>, in reading order.'},
+  cap:{n:'Capacitor',ic:'▥',cl:'sto',cost:5,rar:'u',
+    d:'Banks up to <b>40⚡</b> of leftover charge after converters drink; releases it into next run\'s pool.'},
+  fus:{n:'Fuse',ic:'∿',cl:'utl',cost:12,rar:'r',tag:'ins',
+    d:'Insurance. On a missed quota one Fuse <b>burns</b> (removed from the grid) to preserve your streak and base pay.'},
+  mtr:{n:'Meter',ic:'◫',cl:'utl',cost:4,rar:'c',tag:'gauge',
+    d:'Gauge. No effect in the sim. In <b>MANUAL</b> mode: one Meter on the grid restores the projected total; a second restores the waste figure.'},
+};
+const GENBASE={dyn:5,rea:12,tbn:20};
+const CNVDEF={cnv:{cap:30,rate:1},ref:{cap:60,rate:1.5}};
+const POOL=[['dyn',18],['cnv',16],['amp',15],['rea',10],['rel',9],['ref',9],['ovc',8],['cap',8],['mtr',6],['tbn',6],['coil',6],['fus',4]];
+const RARMULT={c:r=>Math.max(.4,1-.06*(r-1)),u:r=>1+.05*(r-1),r:r=>1+.12*(r-1)};
+function rollPart(){
+  const w=POOL.map(([id,base])=>[id,base*RARMULT[PARTS[id].rar||'c'](S.round)]);
+  const tot=w.reduce((a,p)=>a+p[1],0);let x=rng()*tot;
+  for(const[id,wt]of w){if((x-=wt)<0)return id}return 'dyn';
+}
+
+/* ============ state ============ */
+const COLS=4,MAXROWS=7,ROWCOST=[12,20,28];
+const MULT={ASSISTED:1,STANDARD:1.25,MANUAL:1.5};
+let S,settings,meta;
+function freshState(){
+  return{
+    rows:4,
+    grid:new Array(16).fill(null),   /* {id, st?} or null */
+    bench:[{id:'dyn'},{id:'dyn'},{id:'amp'},{id:'cnv'}],
+    money:8, round:1, score:0, lastRun:0, streak:0, adv:true,
+    shop:[], sold:[false,false,false,false],
+    sel:null, running:false,
+    rngN:0, moveLog:[],
+  };
+}
+function fresh(){
+  S=freshState();
+  settings={mode:null};
+  meta={created:Date.now(),updated:Date.now(),dayNum};
+  _raw=mulberry32(strSeed(seedString));
+}
+function quota(n){return Math.round(15*Math.pow(1.5,n-1))}
+const RANKS=[[24,'Ascendant'],[18,'Grand Dynamo'],[14,'Master Operator'],[10,'Chief Engineer'],[7,'Engineer'],[4,'Operator'],[1,'Apprentice']];
+function rank(n){for(const[t,nm]of RANKS)if(n>=t)return nm;return 'Apprentice'}
+
+const $=id=>document.getElementById(id);
+const gridEl=$('grid'),benchEl=$('bench'),shopEl=$('shop');
+function adj(i){
+  const r=Math.floor(i/COLS),c=i%COLS,a=[];
+  if(r>0)a.push(i-COLS);
+  if(r<S.rows-1)a.push(i+COLS);
+  if(c>0)a.push(i-1);
+  if(c<COLS-1)a.push(i+1);
+  return a;
+}
+
+/* ============ save state (Bible §5) ============ */
+function logMove(e){
+  S.moveLog.push(e);
+  if(window.EWL&&EWL.log){try{EWL.log(e)}catch(err){}}
+}
+function save(){
+  meta.updated=Date.now();
+  try{
+    localStorage.setItem(saveKey,JSON.stringify({
+      schema:1,
+      state:Object.assign({},S,{sel:null,running:false}),
+      settings:{mode:settings.mode},
+      meta,
+    }));
+  }catch(e){}
+}
+function load(){
+  let raw=null;
+  try{raw=localStorage.getItem(saveKey)}catch(e){}
+  if(!raw)return 'none';
+  let d=null;
+  try{d=JSON.parse(raw)}catch(e){return 'bad'}
+  if(!d||d.schema!==1||!d.state||!d.settings)return 'bad';
+  if(!d.meta||d.meta.dayNum!==dayNum)return 'stale';   /* new daily seed → new engine */
+  S=d.state;S.sel=null;S.running=false;
+  settings=d.settings;meta=d.meta;
+  /* replay the rng stream to its saved position */
+  _raw=mulberry32(strSeed(seedString));
+  for(let k=0;k<(S.rngN||0);k++)_raw();
+  return 'ok';
+}
+
+/* ============ simulation ============ */
+/* Pure: never mutates S. Resolution per spec:
+   1) capacitor stored charge → pool
+   2) generators fire in reading order
+   3) converters drink the pool in reading order
+   4) capacitors store leftovers ≤40 each
+   5) remainder WASTED */
+function sim(){
+  const N=S.rows*COLS,G=S.grid;
+  const oc=G.reduce((a,p)=>a+(p&&p.id==='ovc'?1:0),0);
+  let pool=0,pts=0;
+  const ev=[],per={},st={};
+  for(let i=0;i<N;i++){
+    const p=G[i];
+    if(p&&p.id==='cap'&&(p.st||0)>0){pool+=p.st;ev.push({cell:i,k:'rel',a:p.st})}
+  }
+  for(let i=0;i<N;i++){
+    const p=G[i];
+    if(!p||!GENBASE[p.id])continue;
+    let mult=1,rc=0;
+    for(const j of adj(i)){
+      const q=G[j];if(!q)continue;
+      if(q.id==='amp')mult*=2;
+      else if(q.id==='coil')mult*=3;
+      else if(q.id==='rel')rc++;
+    }
+    const out=(GENBASE[p.id]+4*oc)*mult*(1+rc);
+    pool+=out;per[i]={k:'gen',out};ev.push({cell:i,k:'gen',a:out});
+  }
+  for(let i=0;i<N;i++){
+    const p=G[i];
+    if(!p||!CNVDEF[p.id])continue;
+    let rc=0;
+    for(const j of adj(i)){const q=G[j];if(q&&q.id==='rel')rc++}
+    const cap=CNVDEF[p.id].cap*(1+rc);
+    const drink=Math.min(pool,cap);pool-=drink;
+    const gain=Math.floor(drink*CNVDEF[p.id].rate);
+    pts+=gain;per[i]={k:'cnv',drink,gain,cap};ev.push({cell:i,k:'cnv',a:gain,d:drink});
+  }
+  for(let i=0;i<N;i++){
+    const p=G[i];
+    if(!p||p.id!=='cap')continue;
+    const keep=Math.min(pool,40);pool-=keep;
+    st[i]=keep;ev.push({cell:i,k:'sto',a:keep});
+  }
+  return{pts,wasted:pool,ev,per,st};
+}
+
+/* ============ operator modes: the ONE display gate (Bible §2) ============ */
+function meterCount(){return S.grid.reduce((a,p)=>a+(p&&p.id==='mtr'?1:0),0)}
+function vis(){
+  const m=settings.mode;
+  if(m==='STANDARD')return{ghost:true,total:true,percell:false,waste:false};
+  if(m==='MANUAL'){
+    const k=meterCount();
+    return{ghost:k>=1,total:k>=1,percell:false,waste:k>=2};
+  }
+  return{ghost:true,total:true,percell:true,waste:true};   /* ASSISTED */
+}
+
+/* ============ render ============ */
+function pieceEl(p,from,idx,per){
+  const def=PARTS[p.id];
+  const el=document.createElement('div');
+  el.className='piece '+def.cl;
+  if(S.sel&&S.sel.from===from&&S.sel.idx===idx)el.classList.add('sel');
+  let rd='';
+  if(from==='grid'){
+    const info=per?per[idx]:null;
+    if(p.id==='cap')rd=`<div class="rd st">${p.st||0}/40⚡</div>`;
+    else if(info&&info.k==='gen')rd=`<div class="rd pw">+${info.out}⚡</div>`;
+    else if(info&&info.k==='cnv')rd=`<div class="rd wt">${info.gain}pt</div>`;
+    else rd=`<div class="rd">${def.tag||''}</div>`;
+  }
+  el.innerHTML=`<div class="ic">${def.ic}</div>${rd}`;
+  el.onclick=e=>{e.stopPropagation();onPiece(from,idx)};
+  return el;
+}
+const CLCOLOR={gen:'amber',bst:'gold',cnv:'green',sto:'olive',utl:'olive'};
+function render(){
+  $('stRound').textContent=S.round;
+  $('stMoney').textContent='$'+S.money;
+  $('stRun').textContent=S.lastRun;
+  $('stScore').textContent=S.score.toLocaleString();
+  $('quotaLbl').textContent=quota(S.round);
+  $('dayTag').textContent='DAY '+dayNum+(ctx&&ctx.leagueLabel?' · '+ctx.leagueLabel:'');
+  $('rankLbl').textContent=rank(S.round);
+  $('modeBadge').textContent=settings.mode?settings.mode+' ×'+MULT[settings.mode]:'—';
+  const f=sim(),v=vis();
+  const per=(S.running||v.percell)?f.per:null;
+  if(!S.running){
+    let txt=(S.streak>1?'🔥'+S.streak+' · ':'');
+    if(v.total)txt+='▶ '+f.pts+'pt projected';
+    else txt+='no readout — run to find out';
+    if(v.waste&&f.wasted>0)txt+=' · ⚠ '+f.wasted+'⚡ waste';
+    $('storedLbl').textContent=txt;
+    $('gaugeGhost').style.width=(v.ghost?Math.min(100,100*f.pts/quota(S.round)):0)+'%';
+    const fl=$('gaugeFill');fl.style.width='0%';fl.classList.remove('met');
+  }else{
+    $('storedLbl').textContent='RESOLVING…';
+    $('gaugeGhost').style.width='0%';
+  }
+  const N=S.rows*COLS;
+  gridEl.innerHTML='';
+  for(let i=0;i<N;i++){
+    const c=document.createElement('div');
+    c.className='cell';c.dataset.i=i;
+    if(S.sel&&S.sel.from!=='shop'&&!S.grid[i])c.classList.add('droppable');
+    if(S.grid[i])c.appendChild(pieceEl(S.grid[i],'grid',i,per));
+    c.onclick=()=>onCell(i);
+    gridEl.appendChild(c);
+  }
+  const rb=$('rowBtn');
+  if(S.rows>=MAXROWS){rb.textContent='MAX ROWS';rb.disabled=true}
+  else{
+    const cost=ROWCOST[S.rows-4];
+    rb.textContent='+ROW $'+cost;
+    rb.disabled=S.money<cost||S.running;
+  }
+  benchEl.innerHTML='';
+  if(S.bench.length===0)benchEl.innerHTML='<div class="empty-note">bench empty — visit the parts depot</div>';
+  S.bench.forEach((p,i)=>benchEl.appendChild(pieceEl(p,'bench',i,null)));
+  shopEl.innerHTML='';
+  S.shop.forEach((id,i)=>{
+    const def=PARTS[id];
+    const sc=document.createElement('div');
+    sc.className='shopcard'+(S.sold[i]?' sold':'')+(S.sel&&S.sel.from==='shop'&&S.sel.idx===i?' sel':'');
+    sc.innerHTML=`<div class="ic" style="color:var(--${CLCOLOR[def.cl]})">${def.ic}</div><div class="nm">${def.n}</div><div class="pr">$${def.cost}</div>`;
+    sc.onclick=()=>onShop(i);
+    shopEl.appendChild(sc);
+  });
+  $('rerollBtn').disabled=S.money<2||S.running;
+  $('runBtn').disabled=S.running;
+  renderInfo();
+}
+function renderInfo(){
+  const t=$('infoText'),a=$('infoAct');a.innerHTML='';
+  if(!S.sel){t.innerHTML='Generators feed one <b>shared pool</b>; converters drink it in <b>reading order</b>. Adjacency is orthogonal. Tap a part, then tap a cell to move it.';return}
+  const{from,idx}=S.sel;
+  const p=from==='shop'?{id:S.shop[idx]}:from==='bench'?S.bench[idx]:S.grid[idx];
+  if(!p){t.innerHTML='';return}
+  const def=PARTS[p.id];
+  t.innerHTML=`<b>${def.n}</b> — ${def.d}`;
+  if(from==='shop'){
+    const b=document.createElement('button');b.className='small';
+    b.textContent='BUY $'+def.cost;b.disabled=S.money<def.cost;
+    b.onclick=e=>{e.stopPropagation();buy(idx)};a.appendChild(b);
+  }else{
+    const b=document.createElement('button');b.className='small danger';
+    b.textContent='SELL $'+Math.floor(def.cost/2);
+    b.onclick=e=>{e.stopPropagation();sell(from,idx)};a.appendChild(b);
+  }
+}
+
+/* ============ interactions ============ */
+function onPiece(from,idx){
+  if(S.running)return;
+  if(S.sel&&S.sel.from===from&&S.sel.idx===idx){S.sel=null;render();return} /* tap again = deselect */
+  if(S.sel&&S.sel.from!=='shop'&&from==='grid'){moveSelTo(idx);return}
+  S.sel={from,idx};render();
+}
+function onCell(i){
+  if(S.running)return;
+  if(!S.sel){render();return}
+  if(S.sel.from==='shop')return;
+  moveSelTo(i);
+}
+function moveSelTo(i){
+  const{from,idx}=S.sel;
+  if(from==='grid'&&idx===i){S.sel=null;render();return}
+  const moving=from==='grid'?S.grid[idx]:S.bench[idx];
+  const target=S.grid[i];
+  if(from==='grid'){S.grid[idx]=target||null}
+  else{S.bench.splice(idx,1);if(target)S.bench.push(target)}
+  S.grid[i]=moving;
+  S.sel={from:'grid',idx:i};
+  logMove({t:'place',from,fi:idx,to:i});
+  save();render();
+}
+function onShop(i){
+  if(S.running||S.sold[i])return;
+  S.sel={from:'shop',idx:i};render();
+}
+function buy(i){
+  const id=S.shop[i],def=PARTS[id];
+  if(S.money<def.cost||S.sold[i])return;
+  S.money-=def.cost;S.sold[i]=true;
+  const p={id};if(id==='cap')p.st=0;
+  S.bench.push(p);
+  S.sel={from:'bench',idx:S.bench.length-1};
+  logMove({t:'buy',slot:i,id});
+  save();render();
+}
+function sell(from,idx){
+  const p=from==='grid'?S.grid[idx]:S.bench[idx];
+  S.money+=Math.floor(PARTS[p.id].cost/2);
+  if(from==='grid')S.grid[idx]=null;else S.bench.splice(idx,1);
+  S.sel=null;
+  logMove({t:'sell',from,idx,id:p.id});
+  save();render();
+}
+$('rerollBtn').onclick=()=>{
+  if(S.money<2||S.running)return;
+  S.money-=2;
+  logMove({t:'reroll'});
+  rollShop();save();render();
+};
+$('rowBtn').onclick=()=>{
+  if(S.rows>=MAXROWS||S.running)return;
+  const cost=ROWCOST[S.rows-4];
+  if(S.money<cost)return;
+  S.money-=cost;S.rows++;
+  for(let k=0;k<COLS;k++)S.grid.push(null);
+  logMove({t:'expand',rows:S.rows});
+  save();render();
+};
+
+/* supply guarantee (Doctrine #7): conversion capacity in points, grid + bench */
+function convPts(){
+  let pts=0;
+  for(const p of [...S.grid,...S.bench]){
+    if(p&&CNVDEF[p.id])pts+=Math.floor(CNVDEF[p.id].cap*CNVDEF[p.id].rate);
+  }
+  return pts;
+}
+function rollShop(){
+  S.shop=[rollPart(),rollPart(),rollPart(),rollPart()];
+  S.sold=[false,false,false,false];
+  if(convPts()<quota(S.round+1)&&!S.shop.some(id=>PARTS[id].cl==='cnv')){
+    S.shop[Math.floor(rng()*4)]=rng()<.5?'cnv':'ref';
+  }
+}
+
+/* ============ run ============ */
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+async function runEngine(){
+  if(S.running)return;
+  S.running=true;S.sel=null;S.lastRun=0;
+  logMove({t:'run'});
+  render();
+  const f=sim();
+  const cells=gridEl.children;
+  let acc=0;
+  for(const e of f.ev){
+    const cell=cells[e.cell];
+    if(e.k==='rel'){
+      cell.classList.add('firing-st');flash(cell,'▥+'+e.a+'⚡','store');
+      await sleep(reduced?0:200);cell.classList.remove('firing-st');
+    }else if(e.k==='gen'){
+      cell.classList.add('firing');flash(cell,'+'+e.a+'⚡','charge');
+      await sleep(reduced?0:200);cell.classList.remove('firing');
+    }else if(e.k==='cnv'){
+      cell.classList.add('firing-pt');
+      acc+=e.a;flash(cell,'+'+e.a+'pt','pts');
+      S.lastRun=acc;tickGauge();
+      await sleep(reduced?0:260);cell.classList.remove('firing-pt');
+    }else if(e.k==='sto'){
+      cell.classList.add('firing-st');flash(cell,'▥ bank '+e.a+'⚡','store');
+      await sleep(reduced?0:200);cell.classList.remove('firing-st');
+    }
+  }
+  /* commit capacitor charge */
+  for(let i=0;i<S.grid.length;i++){
+    const p=S.grid[i];
+    if(p&&p.id==='cap')p.st=f.st[i]||0;
+  }
+  S.lastRun=f.pts;tickGauge();
+  await sleep(reduced?100:450);
+
+  const q=quota(S.round),n=S.round;
+  const gain=Math.round(f.pts*MULT[settings.mode]);
+  S.score+=gain;
+  const banked=Object.values(f.st).reduce((a,b)=>a+b,0);
+  let diag='';
+  if(f.wasted>0)diag+=`<br><br><b style="color:var(--red)">WASTED ${f.wasted}⚡</b> — charge above conversion capacity at your converters. Add ▣/⬡ capacity, relay-boost one, or bank it in a ▥ Capacitor.`;
+  if(banked>0)diag+=`<br>▥ banked <b>${banked}⚡</b> for next run.`;
+
+  if(f.pts>=q){
+    S.streak+=1;S.adv=true;
+    const surplus=Math.min(3,Math.floor((f.pts/q-1)*4));
+    const interest=Math.min(4,Math.floor(S.money/5));
+    const streakB=Math.min(5,S.streak-1);
+    const earn=4+n+surplus+interest+streakB;
+    S.money+=earn;
+    $('roundTitle').innerHTML='QUOTA <span>MET</span>';
+    $('roundText').innerHTML=`Converted <b>${f.pts}pt</b> against a <b>${q}pt</b> quota.<br><br>Earned <b>$${earn}</b> ($${4+n} base${surplus?` + $${surplus} surplus`:''}${interest?` + $${interest} interest`:''}${streakB?` + $${streakB} streak`:''}).<br>Score <b>+${gain}</b> (${f.pts}pt × ${MULT[settings.mode]} ${settings.mode}).${diag}<br><br>Next quota: <b>${quota(n+1)}pt</b>.`;
+    S.round=n+1;
+  }else{
+    S.adv=false;
+    const fi=S.grid.findIndex(p=>p&&p.id==='fus');
+    if(fi>=0){
+      S.grid[fi]=null;       /* the fuse burns */
+      const earn=4+n;
+      S.money+=earn;
+      $('roundTitle').innerHTML='FUSE <span>BLOWN</span>';
+      $('roundText').innerHTML=`Converted <b>${f.pts}pt</b> against <b>${q}pt</b>. A <b>Fuse ∿</b> burned to absorb the miss — streak preserved${S.streak>0?' (🔥'+S.streak+')':''}, base pay <b>$${earn}</b> honored. The fuse is gone from the grid.<br>Score <b>+${gain}</b>.${diag}<br><br>The quota stands: <b>${q}pt</b>.`;
+    }else{
+      S.streak=0;S.money+=2;
+      $('roundTitle').innerHTML='ENGINE <span>STALLED</span>';
+      $('roundText').innerHTML=`Converted <b>${f.pts}pt</b> against <b>${q}pt</b>. <b>STALLED</b> — no pay this shift; a <b>$2</b> scrap subsidy, and your streak resets.<br>Score <b>+${gain}</b>.${diag}<br><br>The quota stands: <b>${q}pt</b>.`;
+    }
+  }
+  rollShop();
+  S.running=false;
+  save();
+  if(window.EWL&&EWL.submitScore){
+    try{EWL.submitScore({score:S.score,round:S.round,mode:settings.mode})}catch(e){}
+  }
+  $('roundOv').classList.remove('hidden');
+}
+function tickGauge(){
+  const pct=Math.min(100,100*S.lastRun/quota(S.round));
+  const f=$('gaugeFill');f.style.width=pct+'%';
+  f.classList.toggle('met',S.lastRun>=quota(S.round));
+  $('stRun').textContent=S.lastRun;
+}
+function flash(cell,text,cls){
+  const f=document.createElement('div');
+  f.className='floater '+cls;f.textContent=text;
+  cell.appendChild(f);
+  setTimeout(()=>f.remove(),950);
+}
+$('runBtn').onclick=runEngine;
+$('nextBtn').onclick=()=>{
+  $('roundOv').classList.add('hidden');
+  S.lastRun=0;S.sel=null;render();
+};
+
+/* ============ confirm modal ============ */
+let cfFn=null;
+function showConfirm(title,text,okLabel,fn,cancelable){
+  $('cfTitle').textContent=title;
+  $('cfText').innerHTML=text;
+  $('cfOk').textContent=okLabel;
+  $('cfCancel').style.display=cancelable?'':'none';
+  cfFn=fn;
+  $('confirmOv').classList.remove('hidden');
+}
+$('cfCancel').onclick=()=>{$('confirmOv').classList.add('hidden');cfFn=null};
+$('cfOk').onclick=()=>{$('confirmOv').classList.add('hidden');const fn=cfFn;cfFn=null;if(fn)fn()};
+$('scrapBtn').onclick=()=>{
+  if(S.running)return;
+  showConfirm('SCRAP THIS ENGINE?','Wipes the grid, bench, credits and move log for today\'s seed. This cannot be undone.','SCRAP IT',()=>{
+    try{localStorage.removeItem(saveKey)}catch(e){}
+    fresh();render();
+    $('introOv').classList.remove('hidden');
+  },true);
+};
+
+/* ============ intro / mode picker (Bible §2) ============ */
+let pickMode='ASSISTED';
+document.querySelectorAll('.modecard').forEach(el=>{
+  el.onclick=()=>{
+    pickMode=el.dataset.m;
+    document.querySelectorAll('.modecard').forEach(x=>x.classList.toggle('sel',x===el));
+  };
+});
+$('startBtn').onclick=()=>{
+  settings.mode=pickMode;
+  $('introOv').classList.add('hidden');
+  rollShop();save();render();
+};
+
+/* ============ boot ============ */
+const loaded=load();
+if(loaded==='ok'){
+  $('introOv').classList.add('hidden');
+}else if(loaded==='bad'){
+  fresh();
+  showConfirm('INCOMPATIBLE SAVE','A save from a different schema version was found. It must be scrapped before today\'s engine can run.','SCRAP & RESTART',()=>{
+    try{localStorage.removeItem(saveKey)}catch(e){}
+  },false);
+}else{
+  fresh();   /* none, stale (new day), or unparseable-after-bad: start clean, intro shows */
+}
+render();
+</script>
+</body>
+</html>

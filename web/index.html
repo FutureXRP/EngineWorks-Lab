@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ENGINEWORKS LAB — invented machines, honest physics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0F1112; --panel:#171A1B; --raised:#1F2425; --line:#2E3536; --line-hi:#475052;
+  --ink:#E9E4D4; --ink-dim:#8E9697;
+  --amber:#FFAE45; --amber-dim:#8A6230; --gold:#E8C268; --green:#8BD17C;
+  --copper:#E08A5A; --red:#E06A5A; --teal:#5ABFB0; --prussian:#6A9BD8; --ember:#E07A3A;
+  --disp:'Chakra Petch','Arial Narrow',sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--ink);font-family:var(--mono);font-size:14px;max-width:520px;margin:0 auto;padding-bottom:60px}
+header{padding:14px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#15191A,#101314);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10}
+h1{font-family:var(--disp);font-weight:700;font-size:17px;letter-spacing:.16em}
+h1 span{color:var(--amber)}
+#acctChip{font-size:11px;color:var(--ink-dim);cursor:pointer;border:1px solid var(--line);border-radius:4px;padding:5px 10px;background:var(--panel)}
+#acctChip b{color:var(--gold)}
+main{padding:14px;display:flex;flex-direction:column;gap:18px}
+.sect-lbl{font-size:10px;letter-spacing:.18em;color:var(--ink-dim);text-transform:uppercase;margin-bottom:8px;display:flex;justify-content:space-between;align-items:baseline}
+.hero{font-size:12.5px;line-height:1.65;color:var(--ink-dim);border-left:3px solid var(--amber-dim);background:var(--panel);padding:10px 12px;border-radius:0 5px 5px 0}
+.hero b{color:var(--ink)}
+.leagues{display:flex;gap:8px}
+.lg{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px;text-align:center}
+.lg .nm{font-family:var(--disp);font-size:11px;letter-spacing:.14em;color:var(--gold)}
+.lg .cd{font-size:11px;color:var(--ink-dim);margin-top:3px}
+.lg .pk{font-size:9px;color:var(--ink-dim);opacity:.7;margin-top:2px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.card .ttl{display:flex;justify-content:space-between;align-items:baseline}
+.card .ttl h3{font-family:var(--disp);letter-spacing:.16em;font-size:14px}
+.card .tag{font-size:9px;letter-spacing:.12em;padding:2px 7px;border-radius:3px;border:1px solid var(--line-hi);color:var(--ink-dim)}
+.card .tag.live{color:var(--green);border-color:#3E5A3A}
+.card p{font-size:11.5px;line-height:1.55;color:var(--ink-dim)}
+.playrow{display:flex;gap:6px}
+.playrow a{flex:1;text-align:center;text-decoration:none;font-family:var(--disp);letter-spacing:.1em;font-weight:600;font-size:11px;border:1px solid var(--line-hi);background:var(--raised);color:var(--ink);border-radius:5px;padding:8px 4px}
+.playrow a.main{border-color:var(--amber-dim);color:var(--amber)}
+button{font-family:var(--disp);letter-spacing:.12em;font-weight:600;border:1px solid var(--line-hi);background:var(--raised);color:var(--ink);border-radius:5px;padding:9px 14px;font-size:12px;cursor:pointer}
+button:active{transform:translateY(1px)}
+button:disabled{opacity:.4;pointer-events:none}
+button.cta{border-color:var(--amber-dim);background:linear-gradient(180deg,#33240F,#241B10);color:var(--amber);font-size:13px;padding:12px}
+button.small{padding:5px 9px;font-size:10px}
+button.danger{border-color:#6B3A33;color:var(--red)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tabs button{padding:6px 10px;font-size:10px;color:var(--ink-dim)}
+.tabs button.on{color:var(--amber);border-color:var(--amber-dim)}
+table{width:100%;border-collapse:collapse;font-size:11.5px}
+th{font-size:9px;letter-spacing:.14em;color:var(--ink-dim);text-transform:uppercase;text-align:left;padding:6px 6px;border-bottom:1px solid var(--line)}
+td{padding:7px 6px;border-bottom:1px solid #1C2122}
+td.r,th.r{text-align:right}
+tr.me td{color:var(--gold)}
+.modebadge{font-size:8.5px;letter-spacing:.08em;border:1px solid var(--line);border-radius:3px;padding:1px 4px;color:var(--ink-dim)}
+.empty{font-size:11.5px;color:var(--ink-dim);padding:14px 6px;text-align:center}
+.paycard{background:linear-gradient(180deg,#1B1A14,#15161A);border:1px solid var(--amber-dim);border-radius:6px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.paycard .price{font-family:var(--disp);font-size:24px;color:var(--gold)}
+.paycard .price small{font-size:11px;color:var(--ink-dim);font-family:var(--mono)}
+.paycard ul{list-style:none;font-size:11.5px;color:var(--ink-dim);display:flex;flex-direction:column;gap:4px}
+.paycard li::before{content:'» ';color:var(--amber)}
+.note{font-size:10.5px;color:var(--ink-dim);opacity:.75;line-height:1.5}
+.overlay{position:fixed;inset:0;background:rgba(10,12,13,.9);z-index:50;display:flex;align-items:center;justify-content:center;padding:20px}
+.overlay.hidden{display:none}
+.modal{background:var(--panel);border:1px solid var(--line-hi);border-radius:8px;padding:22px 20px;max-width:380px;width:100%;display:flex;flex-direction:column;gap:10px}
+.modal h2{font-family:var(--disp);letter-spacing:.16em;font-size:16px}
+.modal h2 span{color:var(--amber)}
+.modal input{background:#0A0C0D;border:1px solid var(--line);border-radius:4px;color:var(--ink);font-family:var(--mono);font-size:13px;padding:9px 10px;width:100%}
+.modal input:focus{outline:none;border-color:var(--amber-dim)}
+.modal .err{font-size:11px;color:var(--red);min-height:14px}
+.modal .swap{font-size:11px;color:var(--ink-dim);text-align:center;cursor:pointer;text-decoration:underline}
+footer{padding:18px 14px;font-size:10.5px;color:var(--ink-dim);opacity:.8;line-height:1.6;border-top:1px solid var(--line);margin-top:10px}
+.acct-box{display:flex;flex-direction:column;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px;font-size:11.5px;color:var(--ink-dim)}
+.acct-box b{color:var(--ink)}
+.acct-box .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.sub-on{color:var(--green)}
+.sub-off{color:var(--copper)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>ENGINEWORKS <span>LAB</span></h1>
+  <div id="acctChip">SIGN IN</div>
+</header>
+
+<main>
+  <div class="hero">
+    <b>Invented machines. Honest physics.</b> Build engines, drivetrains and reactors against
+    seeded daily targets — identical for every operator on Earth. Play free forever;
+    subscribe to post ranked scores in the daily, weekly and monthly leagues.
+  </div>
+
+  <section>
+    <div class="sect-lbl"><span>Leagues — seeded, UTC, same machine for everyone</span></div>
+    <div class="leagues">
+      <div class="lg"><div class="nm">DAILY</div><div class="cd" id="cdDaily">—</div><div class="pk" id="pkDaily"></div></div>
+      <div class="lg"><div class="nm">WEEKLY</div><div class="cd" id="cdWeekly">—</div><div class="pk" id="pkWeekly"></div></div>
+      <div class="lg"><div class="nm">MONTHLY</div><div class="cd" id="cdMonthly">—</div><div class="pk" id="pkMonthly"></div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sect-lbl"><span>The Catalog</span></div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="card">
+        <div class="ttl"><h3 style="color:var(--amber)">DYNAMO</h3><span class="tag live">PLAYABLE</span></div>
+        <p>The daily engine. Place generators, amps and converters on the grid; charge that finds no converter is <b>WASTED</b>. Placement economics vs an escalating quota.</p>
+        <div class="playrow">
+          <a class="main" href="/play/dynamo?league=daily">DAILY</a>
+          <a href="/play/dynamo?league=weekly">WEEKLY</a>
+          <a href="/play/dynamo?league=monthly">MONTHLY</a>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ttl"><h3 style="color:var(--copper)">CRANKWORKS</h3><span class="tag live">PLAYABLE</span></div>
+        <p>Drivetrain design. Typed ports, rotation, friction, reversible gearing. Turbines want RPM, presses want torque — your gearbox decides who eats.</p>
+        <div class="playrow">
+          <a class="main" href="/play/crankworks?league=daily">DAILY</a>
+          <a href="/play/crankworks?league=weekly">WEEKLY</a>
+          <a href="/play/crankworks?league=monthly">MONTHLY</a>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ttl"><h3 style="color:var(--prussian)">COREWORKS</h3><span class="tag">IN THE SHOP</span></div>
+        <p>Socket anatomy and a frequency dial. Flux in, vim out — if the resonator and converter band agree.</p>
+      </div>
+      <div class="card">
+        <div class="ttl"><h3 style="color:var(--teal)">PIPEWORKS</h3><span class="tag">IN THE SHOP</span></div>
+        <p>Pressure networks with rated pipes. Boosted copper is a time bomb you chose.</p>
+      </div>
+      <div class="card">
+        <div class="ttl"><h3 style="color:var(--ember)">FOUNDRY</h3><span class="tag">IN THE SHOP</span></div>
+        <p>Invented alloy chemistry. Your Materials Codex fills in as you pour — knowledge is the progression.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="boards">
+    <div class="sect-lbl"><span>Leaderboards</span><span id="boardMeta" style="letter-spacing:.05em"></span></div>
+    <div class="tabs" id="gameTabs"></div>
+    <div class="tabs" id="leagueTabs" style="margin-top:6px"></div>
+    <div style="background:var(--panel);border:1px solid var(--line);border-radius:6px;margin-top:8px;overflow:hidden">
+      <table>
+        <thead><tr><th>#</th><th>Operator</th><th>Mode</th><th class="r">Round</th><th class="r">Points</th></tr></thead>
+        <tbody id="boardBody"><tr><td colspan="5" class="empty">loading…</td></tr></tbody>
+      </table>
+      <div id="myRank" class="empty" style="display:none"></div>
+    </div>
+  </section>
+
+  <section id="upgrade">
+    <div class="sect-lbl"><span>Ranked Access</span></div>
+    <div class="paycard">
+      <div class="price">$4.99 <small>/ month</small></div>
+      <ul>
+        <li>Post scores to <b style="color:var(--ink)">daily, weekly &amp; monthly leagues</b> across the whole catalog</li>
+        <li>Operator-mode multipliers count on the boards (MANUAL ×1.5)</li>
+        <li>Move-log verified rankings — no pay-to-win, ever (Bible §1.4)</li>
+        <li>Every game stays free to play unranked, forever</li>
+      </ul>
+      <button class="cta" id="subBtn">SUBSCRIBE — POST RANKED SCORES</button>
+      <div class="note">Subscription buys access to competition, never advantage inside it. All operators play the identical seeded machine.</div>
+    </div>
+  </section>
+
+  <section id="acctSect" style="display:none">
+    <div class="sect-lbl"><span>Account</span></div>
+    <div class="acct-box" id="acctBox"></div>
+  </section>
+</main>
+
+<footer>
+  ENGINEWORKS LAB · single shared physics, seeded daily from UTC.
+  Web first — iOS &amp; Android apps are on the roadmap (same engine, wrapped native).
+</footer>
+
+<div class="overlay hidden" id="authOv">
+  <div class="modal">
+    <h2 id="authTitle">SIGN <span>IN</span></h2>
+    <input id="aHandle" placeholder="operator handle (3–20 chars)" autocomplete="username" style="display:none">
+    <input id="aEmail" placeholder="email" type="email" autocomplete="email">
+    <input id="aPass" placeholder="password (8+ chars)" type="password" autocomplete="current-password">
+    <div class="err" id="aErr"></div>
+    <button class="cta" id="aSubmit">SIGN IN</button>
+    <div class="swap" id="aSwap">new here? create an account</div>
+    <button class="small" id="aClose">CLOSE</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const GAMES=[['dynamo','DYNAMO'],['crankworks','CRANKWORKS']];
+const LEAGUES=[['daily','DAILY'],['weekly','WEEKLY'],['monthly','MONTHLY']];
+let ME=null, LG=null, curGame='dynamo', curLeague='daily', registering=false;
+
+async function api(path,opts){
+  const r=await fetch(path,{credentials:'same-origin',headers:{'Content-Type':'application/json'},...opts});
+  const b=await r.json().catch(()=>({}));
+  if(!r.ok)throw Object.assign(new Error(b.error||r.statusText),{status:r.status});
+  return b;
+}
+
+/* ---- session ---- */
+async function refreshMe(){
+  try{const b=await api('/api/me');ME=b.user;LG=b.leagues}catch(e){ME=null}
+  renderAcct();
+}
+function renderAcct(){
+  const chip=$('acctChip');
+  if(!ME){chip.innerHTML='SIGN IN';chip.onclick=()=>openAuth(false);$('acctSect').style.display='none';
+    $('subBtn').textContent='SUBSCRIBE — POST RANKED SCORES';return}
+  const sub=ME.subscription;
+  chip.innerHTML='<b>'+ME.handle+'</b> '+(sub.active?'· RANKED':'');
+  chip.onclick=()=>{$('acctSect').style.display='';$('acctSect').scrollIntoView({behavior:'smooth'})};
+  $('acctSect').style.display='';
+  const box=$('acctBox');
+  box.innerHTML=
+    '<div class="row"><span>Operator <b>'+ME.handle+'</b></span><span>'+ME.email+'</span></div>'+
+    '<div class="row"><span>Ranked access: <b class="'+(sub.active?'sub-on':'sub-off')+'">'+
+      (sub.active?(sub.willRenew?'ACTIVE — renews ':'ACTIVE — ends ')+new Date(sub.renewsAt).toISOString().slice(0,10):'NOT ACTIVE')+
+    '</b></span></div>'+
+    '<div class="row" id="acctBtns"></div>';
+  const btns=$('acctBtns');
+  if(sub.active&&sub.willRenew){
+    const c=document.createElement('button');c.className='small danger';c.textContent='CANCEL RENEWAL';
+    c.onclick=async()=>{await api('/api/billing/cancel',{method:'POST',body:'{}'});refreshMe()};btns.appendChild(c);
+  }else{
+    const s=document.createElement('button');s.className='small';s.textContent=sub.active?'RESUME RENEWAL':'SUBSCRIBE';
+    s.onclick=subscribe;btns.appendChild(s);
+  }
+  const o=document.createElement('button');o.className='small';o.textContent='SIGN OUT';
+  o.onclick=async()=>{await api('/api/auth/logout',{method:'POST',body:'{}'});ME=null;renderAcct();loadBoard()};
+  btns.appendChild(o);
+  $('subBtn').textContent=sub.active?'RANKED ACCESS ACTIVE ✓':'SUBSCRIBE — POST RANKED SCORES';
+}
+async function subscribe(){
+  if(!ME)return openAuth(true);
+  try{await api('/api/billing/subscribe',{method:'POST',body:'{}'});await refreshMe()}
+  catch(e){alert(e.message)}
+}
+$('subBtn').onclick=subscribe;
+
+/* ---- auth modal ---- */
+function openAuth(reg){registering=!!reg;syncAuth();$('authOv').classList.remove('hidden');$('aErr').textContent=''}
+function syncAuth(){
+  $('aHandle').style.display=registering?'':'none';
+  $('authTitle').innerHTML=registering?'CREATE <span>ACCOUNT</span>':'SIGN <span>IN</span>';
+  $('aSubmit').textContent=registering?'CREATE ACCOUNT':'SIGN IN';
+  $('aSwap').textContent=registering?'already an operator? sign in':'new here? create an account';
+}
+$('aSwap').onclick=()=>{registering=!registering;syncAuth()};
+$('aClose').onclick=()=>$('authOv').classList.add('hidden');
+$('aSubmit').onclick=async()=>{
+  $('aErr').textContent='';
+  try{
+    const body={email:$('aEmail').value.trim(),password:$('aPass').value};
+    if(registering)body.handle=$('aHandle').value.trim();
+    const b=await api(registering?'/api/auth/register':'/api/auth/login',{method:'POST',body:JSON.stringify(body)});
+    ME=b.user;$('authOv').classList.add('hidden');renderAcct();loadBoard();
+  }catch(e){$('aErr').textContent=e.message}
+};
+
+/* ---- league countdowns ---- */
+function fmtCd(ms){
+  if(ms<=0)return 'rolling…';
+  const s=Math.floor(ms/1000),d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);
+  return d>0?d+'d '+h+'h':h>0?h+'h '+m+'m':m+'m '+(s%60)+'s';
+}
+function tickCds(){
+  if(!LG)return;
+  const now=Date.now();
+  for(const[lg,el,pk]of[['daily','cdDaily','pkDaily'],['weekly','cdWeekly','pkWeekly'],['monthly','cdMonthly','pkMonthly']]){
+    $(el).textContent=fmtCd(LG[lg].endsAt-now);$(pk).textContent=LG[lg].key;
+  }
+}
+setInterval(tickCds,1000);
+
+/* ---- leaderboards ---- */
+function renderTabs(){
+  const gt=$('gameTabs');gt.innerHTML='';
+  for(const[id,nm]of GAMES){
+    const b=document.createElement('button');b.textContent=nm;
+    b.className=id===curGame?'on':'';
+    b.onclick=()=>{curGame=id;renderTabs();loadBoard()};gt.appendChild(b);
+  }
+  const lt=$('leagueTabs');lt.innerHTML='';
+  for(const[id,nm]of LEAGUES){
+    const b=document.createElement('button');b.textContent=nm;
+    b.className=id===curLeague?'on':'';
+    b.onclick=()=>{curLeague=id;renderTabs();loadBoard()};lt.appendChild(b);
+  }
+}
+async function loadBoard(){
+  const body=$('boardBody');
+  try{
+    const b=await api('/api/leaderboard?game='+curGame+'&league='+curLeague);
+    $('boardMeta').textContent=b.periodKey;
+    if(!b.board.length){body.innerHTML='<tr><td colspan="5" class="empty">no ranked scores yet this period — be first on the board</td></tr>'}
+    else{
+      body.innerHTML=b.board.map(r=>
+        '<tr'+(b.me&&r.handle===b.me.handle?' class="me"':'')+'><td>'+r.rank+'</td><td>'+esc(r.handle)+
+        '</td><td><span class="modebadge">'+r.mode+'</span></td><td class="r">'+r.round+
+        '</td><td class="r">'+r.points.toLocaleString()+'</td></tr>').join('');
+    }
+    const mr=$('myRank');
+    if(b.me){mr.style.display='';mr.textContent='you: #'+b.me.rank+' · '+b.me.points.toLocaleString()+' pts'}
+    else mr.style.display='none';
+  }catch(e){body.innerHTML='<tr><td colspan="5" class="empty">'+esc(e.message)+'</td></tr>'}
+}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+
+/* ---- boot ---- */
+renderTabs();
+refreshMe().then(()=>{tickCds();loadBoard()});
+setInterval(loadBoard,60000);
+</script>
+</body>
+</html>

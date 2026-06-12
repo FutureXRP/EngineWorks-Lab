@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>CRANKWORKS — machines that fit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0F1112;
+  --panel:#171A1B;
+  --raised:#1F2425;
+  --line:#2E3536;
+  --line-hi:#475052;
+  --ink:#E9E4D4;
+  --ink-dim:#8E9697;
+  --amber:#FFAE45;
+  --amber-dim:#8A6230;
+  --gold:#E8C268;
+  --green:#8BD17C;
+  --copper:#E08A5A;
+  --red:#E06A5A;
+  --disp:'Chakra Petch','Arial Narrow',sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  background:var(--bg);color:var(--ink);
+  font-family:var(--mono);font-size:14px;
+  display:flex;flex-direction:column;
+  max-width:520px;margin:0 auto;overflow-x:hidden;
+  user-select:none;-webkit-user-select:none;
+}
+header{padding:10px 14px 8px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#15191A,#101314)}
+.brand{display:flex;align-items:baseline;justify-content:space-between}
+.brand h1{font-family:var(--disp);font-weight:700;font-size:18px;letter-spacing:.18em}
+.brand h1 span{color:var(--copper)}
+.daytag{font-size:11px;color:var(--ink-dim);letter-spacing:.08em}
+.stats{display:flex;gap:8px;margin-top:8px}
+.stat{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:5px 8px;text-align:center}
+.stat .lbl{font-size:9px;letter-spacing:.14em;color:var(--ink-dim);text-transform:uppercase}
+.stat .val{font-size:16px;font-weight:600;margin-top:1px}
+.stat .val.gold{color:var(--gold)}
+.stat .val.copper{color:var(--copper)}
+.stat .val.green{color:var(--green)}
+.gauge-wrap{margin-top:8px}
+.gauge-row{display:flex;justify-content:space-between;font-size:10px;color:var(--ink-dim);letter-spacing:.1em;margin-bottom:3px}
+.gauge-row b{color:var(--ink);font-weight:600}
+.gauge{height:14px;background:#0A0C0D;border:1px solid var(--line);border-radius:3px;position:relative;overflow:hidden}
+.gauge .ghost{position:absolute;inset:0;width:0%;background:rgba(224,138,90,.16);border-right:1px dashed var(--amber-dim);transition:width .2s ease}
+.gauge .fill{position:absolute;inset:0;width:0%;background:linear-gradient(90deg,#8A4E30,var(--copper));transition:width .25s ease}
+.gauge .fill.met{background:linear-gradient(90deg,#4E7A47,var(--green))}
+.gauge .ticks{position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 9%,rgba(0,0,0,.45) 9% 10%)}
+main{flex:1;display:flex;flex-direction:column;padding:12px 14px 0;gap:10px;overflow-y:auto}
+.sect-lbl{font-size:10px;letter-spacing:.18em;color:var(--ink-dim);text-transform:uppercase;display:flex;justify-content:space-between;align-items:center}
+#grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px}
+.cell{aspect-ratio:1;border:1px dashed var(--line);border-radius:5px;display:flex;align-items:center;justify-content:center;position:relative;background:#121516;transition:border-color .15s,box-shadow .15s,background .15s}
+.cell.droppable{border-color:var(--amber-dim)}
+.cell.firing{border-color:var(--copper);border-style:solid;background:#241A12;box-shadow:0 0 14px rgba(224,138,90,.35)}
+.cell.firing-pt{border-color:var(--green);border-style:solid;background:#15220F;box-shadow:0 0 14px rgba(139,209,124,.35)}
+.piece{width:92%;height:92%;border-radius:5px;border:1px solid var(--line-hi);background:linear-gradient(180deg,var(--raised),#191E1F);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;cursor:pointer;position:relative}
+.piece.sel{border-color:var(--copper);box-shadow:0 0 0 2px rgba(224,138,90,.35)}
+.piece.unpow{opacity:.55}
+.piece .ic{font-size:17px;line-height:1.1;transform:rotate(calc(var(--r,0)*90deg));transition:transform .15s}
+.piece .rd{font-size:7px;letter-spacing:0;color:var(--ink-dim);white-space:nowrap;max-width:100%;overflow:hidden}
+.piece .rd.pw{color:var(--amber)}
+.piece .rd.wt{color:var(--green)}
+.piece.src .ic{color:var(--copper)}
+.piece.trn .ic{color:var(--gold)}
+.piece.load .ic{color:var(--green)}
+/* port nubs */
+.nub{position:absolute;background:var(--amber-dim);z-index:2;border-radius:1px}
+.nub.f0{top:-2px;left:50%;transform:translateX(-50%);width:11px;height:4px}
+.nub.f1{right:-2px;top:50%;transform:translateY(-50%);width:4px;height:11px}
+.nub.f2{bottom:-2px;left:50%;transform:translateX(-50%);width:11px;height:4px}
+.nub.f3{left:-2px;top:50%;transform:translateY(-50%);width:4px;height:11px}
+.nub.out{background:var(--copper)}
+.nub.lbl{background:none;color:var(--gold);font-size:7px;font-weight:600;line-height:1}
+#bench{min-height:62px;display:flex;gap:7px;align-items:center;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px}
+#bench .piece{width:52px;height:52px}
+#bench .empty-note{font-size:11px;color:var(--ink-dim);padding:4px 6px}
+#info{min-height:44px;border-left:3px solid var(--amber-dim);background:var(--panel);border-radius:0 5px 5px 0;padding:7px 10px;font-size:11.5px;line-height:1.45;color:var(--ink-dim);display:flex;align-items:center;justify-content:space-between;gap:8px}
+#info b{color:var(--ink)}
+#info .act{display:flex;gap:6px;flex-shrink:0}
+#shop{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.shopcard{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 4px 6px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;transition:border-color .15s;position:relative}
+.shopcard.sel{border-color:var(--gold)}
+.shopcard.sold{opacity:.28;pointer-events:none}
+.shopcard .ic{font-size:19px}
+.shopcard .nm{font-size:8.5px;letter-spacing:.03em;color:var(--ink-dim);text-transform:uppercase;text-align:center}
+.shopcard .pr{font-size:11px;color:var(--gold);font-weight:600}
+button{font-family:var(--disp);letter-spacing:.12em;font-weight:600;border:1px solid var(--line-hi);background:var(--raised);color:var(--ink);border-radius:5px;padding:8px 12px;font-size:12px;cursor:pointer}
+button:active{transform:translateY(1px)}
+button:disabled{opacity:.35;pointer-events:none}
+button.small{padding:5px 9px;font-size:10px}
+button.danger{border-color:#6B3A33;color:var(--red)}
+#runbar{position:sticky;bottom:0;padding:10px 14px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(180deg,transparent,#0F1112 30%);display:flex;gap:8px}
+#runBtn{flex:1;font-size:15px;padding:13px;letter-spacing:.25em;background:linear-gradient(180deg,#33200F,#241710);border:1px solid var(--amber-dim);color:var(--copper)}
+.floater{position:absolute;left:50%;top:0;transform:translateX(-50%);font-family:var(--mono);font-weight:600;font-size:12px;pointer-events:none;animation:floatUp .9s ease-out forwards;white-space:nowrap;z-index:5}
+.floater.charge{color:var(--copper)}
+.floater.pts{color:var(--green)}
+@keyframes floatUp{from{opacity:1;top:8%}to{opacity:0;top:-55%}}
+@media (prefers-reduced-motion: reduce){.floater{animation:none;opacity:0}.gauge .fill,.gauge .ghost{transition:none}}
+.overlay{position:fixed;inset:0;background:rgba(10,12,13,.9);z-index:50;display:flex;align-items:center;justify-content:center;padding:20px}
+.overlay.hidden{display:none}
+.modal{background:var(--panel);border:1px solid var(--line-hi);border-radius:8px;padding:22px 20px;max-width:380px;width:100%}
+.modal h2{font-family:var(--disp);letter-spacing:.18em;font-size:17px;margin-bottom:12px}
+.modal h2 span{color:var(--copper)}
+.modal p{font-size:12.5px;line-height:1.6;color:var(--ink-dim);margin-bottom:10px}
+.modal p b{color:var(--ink)}
+.modal .btnrow{display:flex;gap:8px;margin-top:14px}
+.modal .btnrow button{flex:1}
+.legend{display:grid;grid-template-columns:auto 1fr;gap:5px 10px;font-size:11.5px;margin:10px 0;color:var(--ink-dim)}
+.legend .ic{text-align:center}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>CRANK<span>WORKS</span></h1>
+    <div class="daytag" id="dayTag"></div>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="lbl">Round</div><div class="val" id="stRound">1</div></div>
+    <div class="stat"><div class="lbl">Credits</div><div class="val gold" id="stMoney">$8</div></div>
+    <div class="stat"><div class="lbl">Watts</div><div class="val copper" id="stRun">0</div></div>
+    <div class="stat"><div class="lbl">Total</div><div class="val green" id="stScore">0</div></div>
+  </div>
+  <div class="gauge-wrap">
+    <div class="gauge-row"><span>DEMAND <b id="quotaLbl">80</b>W</span><span id="storedLbl"></span></div>
+    <div class="gauge"><div class="ghost" id="gaugeGhost"></div><div class="fill" id="gaugeFill"></div><div class="ticks"></div></div>
+  </div>
+</header>
+
+<main>
+  <div class="sect-lbl"><span>Assembly Floor</span><span style="letter-spacing:.05em">tap part · tap again to rotate</span></div>
+  <div id="grid"></div>
+
+  <div id="info"><span id="infoText">Power flows only through <b>connected ports</b> (the metal tabs). Orange tab = motor output. Tap a placed part again to rotate it.</span>
+    <span class="act" id="infoAct"></span>
+  </div>
+
+  <div class="sect-lbl"><span>Bench</span></div>
+  <div id="bench"></div>
+
+  <div class="sect-lbl"><span>Machine Shop</span><button class="small" id="rerollBtn">REROLL $2</button></div>
+  <div id="shop"></div>
+</main>
+
+<div id="runbar">
+  <button class="danger" id="scrapBtn">SCRAP</button>
+  <button id="runBtn">ENGAGE DRIVE</button>
+</div>
+
+<div class="overlay" id="introOv">
+  <div class="modal">
+    <h2>CRANK<span>WORKS</span> · how it works</h2>
+    <p>Assemble a <b>drivetrain</b>: power flows from the Motor through physically connected ports. Parts only fit where their ports meet. Tap a placed part to rotate it.</p>
+    <div class="legend">
+      <span class="ic" style="color:var(--copper)">▲</span><span><b>Motor</b> — 120 RPM, 12 Nm out of one face</span>
+      <span class="ic" style="color:var(--gold)">─ └ ┬</span><span><b>Shafts, elbows, splitters</b> carry rotation (−5% torque each)</span>
+      <span class="ic" style="color:var(--gold)">⚙</span><span><b>Gearbox</b> — reversible: 2× speed one way, 2× torque the other</span>
+      <span class="ic" style="color:var(--green)">◎ ✪ ▣</span><span><b>Loads</b> make watts — Turbines need RPM, Presses need torque</span>
+    </div>
+    <p>Watts = RPM × Nm ÷ 10. Meet the demand to get paid; miss it and the line <b>stalls</b> — no pay, but the demand waits. There's always a way forward.</p>
+    <p><b>Choose your operator mode</b> — instrumentation only; the physics, seed and economy are identical. The multiplier counts on ranked boards.</p>
+    <div class="btnrow" id="modeRow">
+      <button data-m="ASSISTED">ASSISTED ×1.0</button>
+      <button data-m="STANDARD">STANDARD ×1.25</button>
+      <button data-m="MANUAL">MANUAL ×1.5</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="roundOv">
+  <div class="modal">
+    <h2 id="roundTitle">DEMAND <span>MET</span></h2>
+    <p id="roundText"></p>
+    <div class="btnrow"><button id="nextBtn">CONTINUE</button></div>
+  </div>
+</div>
+
+<script src="../platform.js"></script>
+<script>
+/* ============ seeded rng ============ */
+function strSeed(s){let h=1779033703^s.length;for(let i=0;i<s.length;i++){h=Math.imul(h^s.charCodeAt(i),3432918353);h=h<<13|h>>>19}return h>>>0}
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const EPOCH=new Date(Date.UTC(2026,0,1));
+const today=new Date();
+const dayNum=Math.floor((Date.UTC(today.getFullYear(),today.getMonth(),today.getDate())-EPOCH)/86400000)+1;
+const CTX=window.EWL?EWL.boot({game:'crankworks'}):null;
+const SEED=CTX?CTX.seedString:'crankworks-day-'+dayNum;
+const SAVE_KEY=CTX?CTX.saveKey:'ewl.crankworks.v1';
+/* rng wrapper counts draws so a restored save can fast-forward the stream (Bible §4) */
+let _rng=mulberry32(strSeed(SEED));
+const rng=()=>{if(S)S.draws=(S.draws||0)+1;return _rng()};
+function restoreRng(n){_rng=mulberry32(strSeed(SEED));for(let i=0;i<n;i++)_rng()}
+/* Operator modes (Bible §2): instrumentation only — sim, seed, economy identical */
+const MODES={ASSISTED:1.0,STANDARD:1.25,MANUAL:1.5};
+let SETTINGS={mode:'ASSISTED'};
+
+/* ============ parts ============ */
+/* faces: 0=N 1=E 2=S 3=W. ports(rot) returns Set of faces. */
+const PARTS={
+  mot:{n:'Motor',ic:'▲',cl:'src',cost:15,rar:'r',
+    d:'Drive source: <b>120 RPM, 12 Nm</b> out of the orange face.',
+    ports:r=>new Set([r])},
+  shf:{n:'Shaft',ic:'─',cl:'trn',cost:2,rar:'c',
+    d:'Straight coupling. Passes rotation through. <b>−5% torque.</b>',
+    ports:r=>new Set([r%2?1:0,r%2?3:2])},
+  elb:{n:'Elbow',ic:'└',cl:'trn',cost:3,rar:'c',
+    d:'Bevel joint — turns the line 90°. <b>−5% torque.</b>',
+    ports:r=>new Set([r,(r+1)%4])},
+  tee:{n:'T-Split',ic:'┬',cl:'trn',cost:5,rar:'u',
+    d:'Splits drive to multiple lines — <b>torque divides</b> between connected branches. −5% torque.',
+    ports:r=>new Set([0,1,2,3].filter(f=>f!==r))},
+  gbx:{n:'Gearbox',ic:'⚙',cl:'trn',cost:7,rar:'u',
+    d:'Reversible 2:1. Enter the <b>S</b> end → 2× RPM, ½ torque. Enter the <b>F</b> end → ½ RPM, 2× torque. −5% torque.',
+    ports:r=>new Set([r,(r+2)%4])},
+  lub:{n:'Oiler',ic:'◇',cl:'trn',cost:6,rar:'u',
+    d:'Inline lubricator. Everything <b>downstream</b> of it loses no torque to friction.',
+    ports:r=>new Set([r%2?1:0,r%2?3:2])},
+  gen:{n:'Generator',ic:'◎',cl:'load',cost:6,rar:'c',
+    d:'Standard load. <b>W = RPM × Nm ÷ 10</b> at any input.',
+    ports:r=>new Set([r])},
+  tbn:{n:'Turbine',ic:'✪',cl:'load',cost:10,rar:'u',
+    d:'High-speed load. <b>2× watts at ≥300 RPM</b>, sputters at 20% below.',
+    ports:r=>new Set([r])},
+  prs:{n:'Press',ic:'▣',cl:'load',cost:10,rar:'u',
+    d:'Heavy load. <b>2× watts at ≥30 Nm</b>, sputters at 20% below.',
+    ports:r=>new Set([r])},
+};
+const POOL=[['shf',22],['elb',16],['gen',16],['gbx',12],['tee',10],['lub',8],['tbn',8],['prs',8],['mot',5]];
+const RARMULT={c:r=>Math.max(.4,1-.06*(r-1)),u:r=>1+.05*(r-1),r:r=>1+.12*(r-1)};
+function rollPart(){
+  const w=POOL.map(([id,base])=>[id,base*RARMULT[PARTS[id].rar||'c'](S.round)]);
+  const tot=w.reduce((a,p)=>a+p[1],0);let x=rng()*tot;
+  for(const[id,wt]of w){if((x-=wt)<0)return id}return 'shf';
+}
+
+/* ============ state ============ */
+const COLS=5,ROWS=5,N=COLS*ROWS;
+let S;
+function freshState(){
+  return{
+    grid:new Array(N).fill(null),   /* {id,rot} or null */
+    bench:[{id:'mot',rot:1},{id:'shf',rot:1},{id:'shf',rot:1},{id:'gen',rot:3}],
+    money:8, round:1, score:0, lastRun:0, streak:0, adv:true,
+    shop:[], sold:[false,false,false,false],
+    sel:null, running:false, draws:0, moveLog:[], created:Date.now(),
+  };
+}
+/* ============ save state (Bible §5) + move log (Bible §4) ============ */
+function save(){
+  try{localStorage.setItem(SAVE_KEY,JSON.stringify({
+    schema:1,state:{...S,sel:null,running:false},settings:SETTINGS,
+    meta:{created:S.created,updated:Date.now(),dayNum,seed:SEED}
+  }))}catch(e){}
+}
+function load(){
+  try{
+    const d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');
+    if(!d||d.schema!==1||!d.meta||d.meta.seed!==SEED)return false;
+    S=d.state;S.sel=null;S.running=false;S.moveLog=S.moveLog||[];
+    if(d.settings&&MODES[d.settings.mode])SETTINGS=d.settings;
+    restoreRng(S.draws||0);
+    if(window.EWL)EWL.moveLog=S.moveLog.slice();
+    return true;
+  }catch(e){return false}
+}
+function logMove(m){
+  S.moveLog.push(m);
+  if(window.EWL)EWL.log(m);
+  save();
+}
+function demand(n){return Math.round(80*Math.pow(1.5,n-1))}
+
+const $=id=>document.getElementById(id);
+const gridEl=$('grid'),benchEl=$('bench'),shopEl=$('shop');
+const OPP=f=>(f+2)%4;
+const NB=(i,f)=>{const r=Math.floor(i/COLS),c=i%COLS;
+  if(f===0&&r>0)return i-COLS; if(f===1&&c<COLS-1)return i+1;
+  if(f===2&&r<ROWS-1)return i+COLS; if(f===3&&c>0)return i-1; return -1};
+
+/* ============ simulation ============ */
+/* BFS from each motor. flow = {rpm, t, lub}. visited cells claim first flow. */
+function sim(){
+  const per={}, ev=[]; let watts=0;
+  const visited=new Set();
+  for(let i=0;i<N;i++){
+    const p=S.grid[i];
+    if(!p||p.id!=='mot')continue;
+    visited.add(i);
+    per[i]={rpm:120,t:12,kind:'src'};
+    ev.push({cell:i,kind:'flow',rpm:120,t:12});
+    const outF=[...PARTS.mot.ports(p.rot)][0];
+    const queue=[];
+    const nb=NB(i,outF);
+    if(nb>=0)queue.push({cell:nb,enter:OPP(outF),rpm:120,t:12,lub:false});
+    while(queue.length){
+      const q=queue.shift();
+      const tp=S.grid[q.cell];
+      if(!tp||visited.has(q.cell))continue;
+      const def=PARTS[tp.id];
+      const ports=def.ports(tp.rot);
+      if(!ports.has(q.enter))continue;       /* ports must mate */
+      visited.add(q.cell);
+      if(def.cl==='load'){
+        let w=q.rpm*q.t/10, ok=true;
+        if(tp.id==='tbn'){ok=q.rpm>=300;w*=ok?2:0.2}
+        if(tp.id==='prs'){ok=q.t>=30;w*=ok?2:0.2}
+        w=Math.round(w);
+        watts+=w;
+        per[q.cell]={rpm:q.rpm,t:q.t,w,kind:'load',ok};
+        ev.push({cell:q.cell,kind:'load',w,ok});
+        continue;
+      }
+      if(def.cl==='src'){continue}           /* second motor in a line: blocked */
+      /* transmission */
+      let rpm=q.rpm,t=q.t,lub=q.lub;
+      if(!lub)t*=0.95;
+      if(tp.id==='lub')lub=true;
+      if(tp.id==='gbx'){
+        const F=tp.rot,Sl=(tp.rot+2)%4;
+        if(q.enter===Sl){rpm*=2;t/=2}        /* slow in → fast out */
+        else{rpm/=2;t*=2}                    /* fast in → slow out */
+      }
+      rpm=Math.round(rpm);t=Math.round(t*100)/100;
+      /* find live out faces */
+      const outs=[...ports].filter(f=>{
+        if(f===q.enter)return false;
+        const nb2=NB(q.cell,f);
+        if(nb2<0||visited.has(nb2))return false;
+        const np=S.grid[nb2];
+        return np&&PARTS[np.id].ports(np.rot).has(OPP(f));
+      });
+      const tShare=(tp.id==='tee'&&outs.length>1)?t/outs.length:t;
+      per[q.cell]={rpm,t:tShare,kind:'trn'};
+      ev.push({cell:q.cell,kind:'flow',rpm,t:tShare});
+      for(const f of outs){
+        queue.push({cell:NB(q.cell,f),enter:OPP(f),rpm,t:Math.round(tShare*100)/100,lub});
+      }
+    }
+  }
+  return{watts,per,ev};
+}
+
+/* ============ render ============ */
+function pieceEl(p,from,idx,per){
+  const def=PARTS[p.id];
+  const el=document.createElement('div');
+  el.className='piece '+def.cl;
+  if(S.sel&&S.sel.from===from&&S.sel.idx===idx)el.classList.add('sel');
+  const info=from==='grid'&&per?per[idx]:null;
+  if(from==='grid'&&!info)el.classList.add('unpow');
+  let rd='';
+  if(info){
+    if(info.kind==='load')rd=`<div class="rd wt">${info.w}W${info.ok===false?'·!':''}</div>`;
+    else rd=`<div class="rd pw">${info.rpm}r·${info.t}</div>`;
+  }else if(from==='grid'){rd='<div class="rd">—</div>'}
+  el.innerHTML=`<div class="ic" style="--r:${p.rot}">${def.ic}</div>${rd}`;
+  /* port nubs */
+  const ports=def.ports(p.rot);
+  for(const f of ports){
+    const nb=document.createElement('div');
+    nb.className='nub f'+f+(p.id==='mot'?' out':'');
+    el.appendChild(nb);
+  }
+  if(p.id==='gbx'){
+    const lf=document.createElement('div');
+    lf.className='nub lbl';lf.textContent='F';
+    posLbl(lf,p.rot);el.appendChild(lf);
+    const ls=document.createElement('div');
+    ls.className='nub lbl';ls.textContent='S';
+    posLbl(ls,(p.rot+2)%4);el.appendChild(ls);
+  }
+  el.onclick=e=>{e.stopPropagation();onPiece(from,idx)};
+  return el;
+}
+function posLbl(el,f){
+  if(f===0){el.style.top='2px';el.style.left='50%';el.style.transform='translateX(-50%)'}
+  if(f===1){el.style.right='2px';el.style.top='50%';el.style.transform='translateY(-50%)'}
+  if(f===2){el.style.bottom='2px';el.style.left='50%';el.style.transform='translateX(-50%)'}
+  if(f===3){el.style.left='2px';el.style.top='50%';el.style.transform='translateY(-50%)'}
+}
+function render(){
+  $('stRound').textContent=S.round;
+  $('stMoney').textContent='$'+S.money;
+  $('stRun').textContent=S.lastRun;
+  $('stScore').textContent=S.score.toLocaleString();
+  $('quotaLbl').textContent=demand(S.round);
+  $('dayTag').textContent='DAY '+dayNum+(CTX?' · '+CTX.league.toUpperCase():'')+' · '+SETTINGS.mode;
+  let per=null;
+  if(!S.running){
+    /* pre-commit display is mode-gated (Bible §2); the sim always runs in full */
+    const f=sim();
+    if(SETTINGS.mode==='ASSISTED')per=f.per;
+    if(SETTINGS.mode==='MANUAL'){
+      $('storedLbl').textContent=S.streak>1?'🔥'+S.streak:'';
+      $('gaugeGhost').style.width='0%';
+    }else{
+      $('storedLbl').textContent=(S.streak>1?'🔥'+S.streak+' · ':'')+'▶ '+f.watts+'W projected';
+      $('gaugeGhost').style.width=Math.min(100,100*f.watts/demand(S.round))+'%';
+    }
+    const fl=$('gaugeFill');fl.style.width='0%';fl.classList.remove('met');
+  }else{per=sim().per}
+  gridEl.innerHTML='';
+  for(let i=0;i<N;i++){
+    const c=document.createElement('div');
+    c.className='cell';c.dataset.i=i;
+    if(S.sel&&!S.grid[i])c.classList.add('droppable');
+    if(S.grid[i])c.appendChild(pieceEl(S.grid[i],'grid',i,per));
+    c.onclick=()=>onCell(i);
+    gridEl.appendChild(c);
+  }
+  benchEl.innerHTML='';
+  if(S.bench.length===0)benchEl.innerHTML='<div class="empty-note">bench empty — visit the machine shop</div>';
+  S.bench.forEach((p,i)=>benchEl.appendChild(pieceEl(p,'bench',i,null)));
+  shopEl.innerHTML='';
+  S.shop.forEach((id,i)=>{
+    const def=PARTS[id];
+    const sc=document.createElement('div');
+    sc.className='shopcard'+(S.sold[i]?' sold':'')+(S.sel&&S.sel.from==='shop'&&S.sel.idx===i?' sel':'');
+    sc.innerHTML=`<div class="ic" style="color:var(--${def.cl==='src'?'copper':def.cl==='load'?'green':'gold'})">${def.ic}</div><div class="nm">${def.n}</div><div class="pr">$${def.cost}</div>`;
+    sc.onclick=()=>onShop(i);
+    shopEl.appendChild(sc);
+  });
+  $('rerollBtn').disabled=S.money<2||S.running;
+  $('runBtn').disabled=S.running;
+  renderInfo();
+}
+function renderInfo(){
+  const t=$('infoText'),a=$('infoAct');a.innerHTML='';
+  if(!S.sel){t.innerHTML='Power flows only through <b>connected ports</b>. Tap a placed part again to <b>rotate</b> it.';return}
+  const{from,idx}=S.sel;
+  const p=from==='shop'?{id:S.shop[idx]}:from==='bench'?S.bench[idx]:S.grid[idx];
+  if(!p){t.innerHTML='';return}
+  const def=PARTS[p.id];
+  t.innerHTML=`<b>${def.n}</b> — ${def.d}`;
+  if(from==='shop'){
+    const b=document.createElement('button');b.className='small';
+    b.textContent='BUY $'+def.cost;b.disabled=S.money<def.cost;
+    b.onclick=e=>{e.stopPropagation();buy(idx)};a.appendChild(b);
+  }else{
+    const rb=document.createElement('button');rb.className='small';
+    rb.textContent='⟳';
+    rb.onclick=e=>{e.stopPropagation();rotateSel()};a.appendChild(rb);
+    const b=document.createElement('button');b.className='small danger';
+    b.textContent='SELL $'+Math.floor(def.cost/2);
+    b.onclick=e=>{e.stopPropagation();sell(from,idx)};a.appendChild(b);
+  }
+}
+
+/* ============ interactions ============ */
+function onPiece(from,idx){
+  if(S.running)return;
+  if(S.sel&&S.sel.from===from&&S.sel.idx===idx){rotateSel();return} /* tap again = rotate */
+  if(S.sel&&S.sel.from!=='shop'&&from==='grid'){moveSelTo(idx);return}
+  S.sel={from,idx};render();
+}
+function rotateSel(){
+  const{from,idx}=S.sel;
+  const p=from==='grid'?S.grid[idx]:from==='bench'?S.bench[idx]:null;
+  if(!p)return;
+  p.rot=(p.rot+1)%4;logMove({t:'rotate',from,idx});render();
+}
+function onCell(i){
+  if(S.running)return;
+  if(!S.sel){render();return}
+  if(S.sel.from==='shop')return;
+  moveSelTo(i);
+}
+function moveSelTo(i){
+  const{from,idx}=S.sel;
+  if(from==='grid'&&idx===i){rotateSel();return}
+  const moving=from==='grid'?S.grid[idx]:S.bench[idx];
+  const target=S.grid[i];
+  if(from==='grid'){S.grid[idx]=target||null}
+  else{S.bench.splice(idx,1);if(target)S.bench.push(target)}
+  S.grid[i]=moving;
+  S.sel={from:'grid',idx:i};logMove({t:'place',from,idx,to:i});render();
+}
+function onShop(i){
+  if(S.running||S.sold[i])return;
+  S.sel={from:'shop',idx:i};render();
+}
+function buy(i){
+  const def=PARTS[S.shop[i]];
+  if(S.money<def.cost||S.sold[i])return;
+  S.money-=def.cost;S.sold[i]=true;
+  S.bench.push({id:S.shop[i],rot:0});
+  S.sel={from:'bench',idx:S.bench.length-1};logMove({t:'buy',id:S.shop[i],slot:i});render();
+}
+function sell(from,idx){
+  const p=from==='grid'?S.grid[idx]:S.bench[idx];
+  S.money+=Math.floor(PARTS[p.id].cost/2);
+  if(from==='grid')S.grid[idx]=null;else S.bench.splice(idx,1);
+  S.sel=null;logMove({t:'sell',from,idx,id:p.id});render();
+}
+$('rerollBtn').onclick=()=>{if(S.money<2)return;S.money-=2;rollShop();logMove({t:'reroll'});render()};
+function ownsLoad(){return [...S.grid,...S.bench].some(p=>p&&PARTS[p.id].cl==='load')}
+function ownsMotor(){return [...S.grid,...S.bench].some(p=>p&&p.id==='mot')}
+function rollShop(){
+  S.shop=[rollPart(),rollPart(),rollPart(),rollPart()];
+  S.sold=[false,false,false,false];
+  /* never strand: a drivetrain needs a source and a load */
+  if(!ownsLoad()&&!S.shop.some(id=>PARTS[id].cl==='load'))S.shop[Math.floor(rng()*4)]='gen';
+  if(!ownsMotor()&&!S.shop.includes('mot'))S.shop[Math.floor(rng()*4)]='mot';
+}
+
+/* ============ run ============ */
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+async function runEngine(){
+  if(S.running)return;
+  S.running=true;S.sel=null;S.lastRun=0;render();
+  const{watts,ev}=sim();
+  const cells=gridEl.children;
+  let acc=0;
+  for(const e of ev){
+    const cell=cells[e.cell];
+    if(e.kind==='flow'){
+      cell.classList.add('firing');flash(cell,e.rpm+'rpm','charge');
+      await sleep(reduced?0:200);cell.classList.remove('firing');
+    }else{
+      cell.classList.add('firing-pt');
+      acc+=e.w;flash(cell,'+'+e.w+'W'+(e.ok===false?' !':''),'pts');
+      S.lastRun=acc;tickGauge();
+      await sleep(reduced?0:260);cell.classList.remove('firing-pt');
+    }
+  }
+  S.lastRun=watts;S.score+=watts;
+  tickGauge();
+  await sleep(reduced?100:450);
+  const q=demand(S.round);
+  if(watts>=q){
+    S.streak+=1;S.adv=true;
+    const surplus=Math.min(3,Math.floor(((watts/q)-1)*4));
+    const interest=Math.min(4,Math.floor(S.money/5));
+    const streakB=Math.min(5,S.streak-1);
+    const earn=5+S.round+surplus+interest+streakB;
+    S.money+=earn;
+    $('roundTitle').innerHTML='DEMAND <span>MET</span>';
+    $('roundText').innerHTML=`Delivered <b>${watts}W</b> against <b>${q}W</b> demand.<br><br>Earned <b>$${earn}</b> ($${5+S.round} base${surplus?` + $${surplus} surplus`:''}${interest?` + $${interest} interest`:''}${streakB?` + $${streakB} streak`:''}). Next demand: <b>${demand(S.round+1)}W</b>.`;
+  }else{
+    S.adv=false;S.streak=0;S.money+=2;
+    $('roundTitle').innerHTML='LINE <span>STALLED</span>';
+    $('roundText').innerHTML=`Delivered <b>${watts}W</b> against <b>${q}W</b> demand. No pay this shift — a <b>$2</b> scrap subsidy, and your streak resets. Check the readouts: sputtering loads show <b>!</b>, dead parts show <b>—</b>. The demand stands: <b>${q}W</b>.`;
+  }
+  logMove({t:'run',watts,round:S.round,met:watts>=q});
+  if(window.EWL)EWL.submitScore({score:S.score,round:S.round,mode:SETTINGS.mode});
+  $('roundOv').classList.remove('hidden');
+}
+function tickGauge(){
+  const pct=Math.min(100,100*S.lastRun/demand(S.round));
+  const f=$('gaugeFill');f.style.width=pct+'%';
+  f.classList.toggle('met',S.lastRun>=demand(S.round));
+  $('stRun').textContent=S.lastRun;
+}
+function flash(cell,text,cls){
+  const f=document.createElement('div');
+  f.className='floater '+cls;f.textContent=text;
+  cell.appendChild(f);
+  setTimeout(()=>f.remove(),950);
+}
+$('runBtn').onclick=runEngine;
+$('nextBtn').onclick=()=>{
+  $('roundOv').classList.add('hidden');
+  if(S.adv)S.round+=1;
+  S.lastRun=0;S.running=false;rollShop();save();render();
+};
+document.querySelectorAll('#modeRow button').forEach(b=>{
+  b.onclick=()=>{SETTINGS.mode=b.dataset.m;$('introOv').classList.add('hidden');save();render()};
+});
+$('scrapBtn').onclick=()=>{
+  if(S.running)return;
+  if(!confirm('Scrap this machine? The whole run resets — the seed stays.'))return;
+  try{localStorage.removeItem(SAVE_KEY)}catch(e){}
+  S=freshState();restoreRng(0);if(window.EWL)EWL.moveLog=[];
+  rollShop();$('introOv').classList.remove('hidden');render();
+};
+
+/* ============ boot ============ */
+S=freshState();
+if(load()){$('introOv').classList.add('hidden')}
+else{rollShop();save()}
+render();
+</script>
+</body>
+</html>
