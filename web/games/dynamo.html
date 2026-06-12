@@ -8,14 +8,14 @@
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#0F1112;
-  --panel:#171A1B;
-  --raised:#1F2425;
-  --line:#2E3536;
-  --line-hi:#475052;
+  --bg:#0E120F;
+  --panel:#161C17;
+  --raised:#1E2620;
+  --line:#2E382F;
+  --line-hi:#465244;
   --ink:#E9E4D4;
-  --ink-dim:#8E9697;
-  --amber:#FFB13D;
+  --ink-dim:#8E9788;
+  --amber:#FFAE45;
   --amber-dim:#8A6230;
   --olive:#A9B665;
   --olive-dim:#5C6336;
@@ -34,7 +34,7 @@ body{
   max-width:520px;margin:0 auto;overflow-x:hidden;
   user-select:none;-webkit-user-select:none;
 }
-header{padding:10px 14px 8px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#16180F,#101310)}
+header{padding:10px 14px 8px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#141A15,#10150F)}
 .brand{display:flex;align-items:baseline;justify-content:space-between}
 .brand h1{font-family:var(--disp);font-weight:700;font-size:18px;letter-spacing:.18em}
 .brand h1 span{color:var(--amber)}
@@ -68,6 +68,7 @@ main{flex:1;display:flex;flex-direction:column;padding:12px 14px 0;gap:10px;over
 .piece{width:92%;height:92%;border-radius:5px;border:1px solid var(--line-hi);background:linear-gradient(180deg,var(--raised),#1A1E19);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;cursor:pointer;position:relative}
 .piece.sel{border-color:var(--amber);box-shadow:0 0 0 2px rgba(255,177,61,.35)}
 .piece .ic{font-size:18px;line-height:1.15}
+.piece .nm{font-size:8px;letter-spacing:.04em;color:var(--ink-dim);text-transform:uppercase}
 .piece .rd{font-size:7.5px;letter-spacing:0;color:var(--ink-dim);white-space:nowrap;max-width:100%;overflow:hidden}
 .piece .rd.pw{color:var(--amber)}
 .piece .rd.wt{color:var(--green)}
@@ -89,13 +90,21 @@ main{flex:1;display:flex;flex-direction:column;padding:12px 14px 0;gap:10px;over
 .shopcard .ic{font-size:19px}
 .shopcard .nm{font-size:8.5px;letter-spacing:.03em;color:var(--ink-dim);text-transform:uppercase;text-align:center}
 .shopcard .pr{font-size:11px;color:var(--gold);font-weight:600}
+.shopcard .rar{position:absolute;top:4px;right:5px;width:6px;height:6px;border-radius:50%}
+.rar.c{background:#5C6B5C}.rar.u{background:var(--gold)}.rar.r{background:var(--red)}
 button{font-family:var(--disp);letter-spacing:.12em;font-weight:600;border:1px solid var(--line-hi);background:var(--raised);color:var(--ink);border-radius:5px;padding:8px 12px;font-size:12px;cursor:pointer}
 button:active{transform:translateY(1px)}
 button:disabled{opacity:.35;pointer-events:none}
 button.small{padding:5px 9px;font-size:10px}
 button.danger{border-color:#6B3A33;color:var(--red)}
 #runbar{position:sticky;bottom:0;padding:10px 14px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(180deg,transparent,#0F1112 30%);display:flex;gap:8px}
-#runBtn{flex:1;font-size:15px;padding:13px;letter-spacing:.25em;background:linear-gradient(180deg,#33270F,#241D10);border:1px solid var(--amber-dim);color:var(--amber)}
+#runBtn{flex:1;font-size:15px;padding:13px;letter-spacing:.25em;background:linear-gradient(180deg,#332712,#241C0E);border:1px solid var(--amber-dim);color:var(--amber)}
+#runBtn:not(:disabled){box-shadow:0 0 18px rgba(255,174,69,.12)}
+/* tutorial */
+#tutBanner{margin:10px 14px 0;border:1px solid var(--amber-dim);border-left:3px solid var(--amber);background:#1E1A10;border-radius:5px;padding:9px 11px;font-size:12px;line-height:1.5;color:var(--ink);display:flex;justify-content:space-between;gap:10px;align-items:center}
+#tutBanner.hidden{display:none}
+#tutBanner b{color:var(--amber)}
+.tut-glow{box-shadow:0 0 0 2px var(--amber),0 0 16px rgba(255,174,69,.35)!important;border-radius:6px}
 .floater{position:absolute;left:50%;top:0;transform:translateX(-50%);font-family:var(--mono);font-weight:600;font-size:12px;pointer-events:none;animation:floatUp .9s ease-out forwards;white-space:nowrap;z-index:5}
 .floater.charge{color:var(--amber)}
 .floater.pts{color:var(--green)}
@@ -127,8 +136,11 @@ button.danger{border-color:#6B3A33;color:var(--red)}
 
 <header>
   <div class="brand">
-    <h1>DY<span>NAMO</span></h1>
-    <div class="daytag" id="dayTag"></div>
+    <h1>DYNA<span>MO</span></h1>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="daytag" id="dayTag"></div>
+      <button class="small" id="shareTop">SHARE</button>
+    </div>
   </div>
   <div class="subrow">
     <div class="rank" id="rankLbl">Apprentice</div>
@@ -136,7 +148,7 @@ button.danger{border-color:#6B3A33;color:var(--red)}
   </div>
   <div class="stats">
     <div class="stat"><div class="lbl">Round</div><div class="val" id="stRound">1</div></div>
-    <div class="stat"><div class="lbl">Credits</div><div class="val gold" id="stMoney">$8</div></div>
+    <div class="stat"><div class="lbl">Credits</div><div class="val gold" id="stMoney">$6</div></div>
     <div class="stat"><div class="lbl">Output</div><div class="val amber" id="stRun">0</div></div>
     <div class="stat"><div class="lbl">Score</div><div class="val green" id="stScore">0</div></div>
   </div>
@@ -145,6 +157,8 @@ button.danger{border-color:#6B3A33;color:var(--red)}
     <div class="gauge"><div class="ghost" id="gaugeGhost"></div><div class="fill" id="gaugeFill"></div><div class="ticks"></div></div>
   </div>
 </header>
+
+<div id="tutBanner" class="hidden"><span id="tutText"></span><button class="small" id="tutDone" style="display:none">DONE</button></div>
 
 <main>
   <div class="sect-lbl"><span>Engine Floor</span><button class="small" id="rowBtn">+ROW $12</button></div>
@@ -172,19 +186,19 @@ button.danger{border-color:#6B3A33;color:var(--red)}
 <div class="overlay" id="introOv">
   <div class="modal">
     <h2>DY<span>NAMO</span> · the daily engine</h2>
-    <p>Build an engine on the grid. Each run resolves in order: <b>stored charge releases → generators fire (reading order) → converters drink the pool → capacitors bank leftovers ≤40⚡ → anything left is WASTED</b>.</p>
+    <p>Build a machine that beats an <b>escalating quota</b> every round — same seed for everyone today. Each run resolves in order: <b>stored charge releases → generators fire (reading order) → converters drink the pool → capacitors bank leftovers ≤40⚡ → anything left is WASTED</b>.</p>
     <div class="legend">
-      <span class="ic" style="color:var(--amber)">⚙ ◉ ✪</span><span><b>Generators</b> — make ⚡ charge into the shared pool</span>
-      <span class="ic" style="color:var(--gold)">◈ ❋ ⧉ ↯</span><span><b>Boosters</b> — Amp ×2 / Coil ×3 neighbors · Relay double-triggers neighbors · Overclock +4⚡ base globally</span>
-      <span class="ic" style="color:var(--green)">▣ ⬡</span><span><b>Converters</b> — turn pooled ⚡ into points, in reading order</span>
-      <span class="ic" style="color:var(--olive)">▥</span><span><b>Capacitor</b> — banks ≤40⚡ leftover for next run</span>
-      <span class="ic" style="color:var(--olive)">∿ ◫</span><span><b>Fuse</b> burns to absorb a missed quota · <b>Meter</b> restores readouts in MANUAL</span>
+      <span class="ic" style="color:var(--amber)">⚙ ☢ 🌀</span><span><b>Generators</b> — make ⚡ charge into the shared pool</span>
+      <span class="ic" style="color:var(--gold)">✕2 ↻ ▲</span><span><b>Boosters</b> — Amps/Coils multiply neighbors · Relays trigger neighbors twice · Overclock +4⚡ base globally</span>
+      <span class="ic" style="color:var(--green)">▸ ▸▸</span><span><b>Converters</b> — turn pooled ⚡ into points, in reading order</span>
+      <span class="ic" style="color:var(--olive)">◎</span><span><b>Capacitor</b> — banks ≤40⚡ leftover for next run</span>
+      <span class="ic" style="color:var(--olive)">◉ ◫</span><span><b>Fuse</b> burns to absorb a missed quota · <b>Meter</b> restores readouts in MANUAL</span>
     </div>
-    <p>Meet the quota to get paid; miss it and the engine <b>STALLS</b> — $2 subsidy, the quota waits. Pick your instrumentation (locked for the run):</p>
+    <p>Meet the quota to get paid; miss it and the engine <b>STALLS</b> — $2 subsidy, streak resets, the quota waits. There's always a way forward. Pick your instrumentation (locked for the run):</p>
     <button class="modecard sel" data-m="ASSISTED"><span class="mn">ASSISTED <span>×1.0</span></span><div class="md">Full ghost projection, per-cell readouts, waste warnings.</div></button>
     <button class="modecard" data-m="STANDARD"><span class="mn">STANDARD <span>×1.25</span></span><div class="md">Projected total only — consequences revealed by the run.</div></button>
     <button class="modecard" data-m="MANUAL"><span class="mn">MANUAL <span>×1.5</span></span><div class="md">No projections. Buy Meters ◫ to restore readouts.</div></button>
-    <div class="btnrow"><button id="startBtn">SPIN IT UP</button></div>
+    <div class="btnrow"><button id="tutBtn">TUTORIAL</button><button id="startBtn">SPIN IT UP</button></div>
   </div>
 </div>
 
@@ -226,25 +240,25 @@ function rng(){S.rngN=(S.rngN||0)+1;return _raw()}
 const PARTS={
   dyn:{n:'Dynamo',ic:'⚙',cl:'gen',cost:3,rar:'c',tag:'5⚡',
     d:'Generator. <b>5⚡</b> base into the shared pool.'},
-  rea:{n:'Reactor',ic:'◉',cl:'gen',cost:6,rar:'u',tag:'12⚡',
+  rea:{n:'Reactor',ic:'☢',cl:'gen',cost:6,rar:'u',tag:'12⚡',
     d:'Generator. <b>12⚡</b> base. Steady heavy plant.'},
-  tbn:{n:'Turbine',ic:'✪',cl:'gen',cost:9,rar:'r',tag:'20⚡',
+  tbn:{n:'Turbine',ic:'🌀',cl:'gen',cost:9,rar:'r',tag:'20⚡',
     d:'Generator. <b>20⚡</b> base. The big iron.'},
-  amp:{n:'Amp',ic:'◈',cl:'bst',cost:5,rar:'c',tag:'×2',
+  amp:{n:'Amp ×2',ic:'✕2',cl:'bst',cost:5,rar:'c',tag:'×2',
     d:'Booster. Adjacent generators output <b>×2</b>. Stacks multiplicatively with other amps/coils.'},
-  coil:{n:'Coil',ic:'❋',cl:'bst',cost:9,rar:'r',tag:'×3',
+  coil:{n:'Coil ×3',ic:'✕3',cl:'bst',cost:9,rar:'r',tag:'×3',
     d:'Booster. Adjacent generators output <b>×3</b>. Stacks multiplicatively.'},
-  rel:{n:'Relay',ic:'⧉',cl:'bst',cost:7,rar:'u',tag:'2×trig',
+  rel:{n:'Relay',ic:'↻',cl:'bst',cost:7,rar:'u',tag:'2×trig',
     d:'Adjacent parts trigger twice: generators ×(1+relays) output, converters ×(1+relays) capacity.'},
-  ovc:{n:'Overclock',ic:'↯',cl:'bst',cost:8,rar:'u',tag:'+4⚡',
+  ovc:{n:'Overclock',ic:'▲',cl:'bst',cost:8,rar:'u',tag:'+4⚡',
     d:'Global. Every generator gains <b>+4⚡ base</b> per Overclock, anywhere on the grid.'},
-  cnv:{n:'Converter',ic:'▣',cl:'cnv',cost:4,rar:'c',tag:'≤30⚡',
+  cnv:{n:'Converter',ic:'▸',cl:'cnv',cost:4,rar:'c',tag:'≤30⚡',
     d:'Drinks up to <b>30⚡</b> from the pool at <b>1pt per ⚡</b>, in reading order.'},
-  ref:{n:'Refinery',ic:'⬡',cl:'cnv',cost:7,rar:'u',tag:'≤60⚡',
+  ref:{n:'Refinery',ic:'▸▸',cl:'cnv',cost:7,rar:'u',tag:'≤60⚡',
     d:'Drinks up to <b>60⚡</b> from the pool at <b>1.5pt per ⚡</b>, in reading order.'},
-  cap:{n:'Capacitor',ic:'▥',cl:'sto',cost:5,rar:'u',
+  cap:{n:'Capacitor',ic:'◎',cl:'sto',cost:5,rar:'u',
     d:'Banks up to <b>40⚡</b> of leftover charge after converters drink; releases it into next run\'s pool.'},
-  fus:{n:'Fuse',ic:'∿',cl:'utl',cost:12,rar:'r',tag:'ins',
+  fus:{n:'Fuse',ic:'◉',cl:'utl',cost:12,rar:'r',tag:'ins',
     d:'Insurance. On a missed quota one Fuse <b>burns</b> (removed from the grid) to preserve your streak and base pay.'},
   mtr:{n:'Meter',ic:'◫',cl:'utl',cost:4,rar:'c',tag:'gauge',
     d:'Gauge. No effect in the sim. In <b>MANUAL</b> mode: one Meter on the grid restores the projected total; a second restores the waste figure.'},
@@ -268,7 +282,7 @@ function freshState(){
     rows:4,
     grid:new Array(16).fill(null),   /* {id, st?} or null */
     bench:[{id:'dyn'},{id:'dyn'},{id:'amp'},{id:'cnv'}],
-    money:8, round:1, score:0, raw:0, lastRun:0, streak:0, adv:true,
+    money:6, round:1, score:0, raw:0, lastRun:0, streak:0, adv:true,
     shop:[], sold:[false,false,false,false],
     sel:null, running:false,
     rngN:0, moveLog:[],
@@ -401,6 +415,8 @@ function pieceEl(p,from,idx,per){
     else if(info&&info.k==='gen')rd=`<div class="rd pw">+${info.out}⚡</div>`;
     else if(info&&info.k==='cnv')rd=`<div class="rd wt">${info.gain}pt</div>`;
     else rd=`<div class="rd">${def.tag||''}</div>`;
+  }else{
+    rd=`<div class="nm">${def.n}</div>`;
   }
   el.innerHTML=`<div class="ic">${def.ic}</div>${rd}`;
   el.onclick=e=>{e.stopPropagation();onPiece(from,idx)};
@@ -455,13 +471,14 @@ function render(){
     const def=PARTS[id];
     const sc=document.createElement('div');
     sc.className='shopcard'+(S.sold[i]?' sold':'')+(S.sel&&S.sel.from==='shop'&&S.sel.idx===i?' sel':'');
-    sc.innerHTML=`<div class="ic" style="color:var(--${CLCOLOR[def.cl]})">${def.ic}</div><div class="nm">${def.n}</div><div class="pr">$${def.cost}</div>`;
+    sc.innerHTML=`<div class="rar ${def.rar}"></div><div class="ic" style="color:var(--${CLCOLOR[def.cl]})">${def.ic}</div><div class="nm">${def.n}</div><div class="pr">$${def.cost}</div>`;
     sc.onclick=()=>onShop(i);
     shopEl.appendChild(sc);
   });
   $('rerollBtn').disabled=S.money<2||S.running;
-  $('runBtn').disabled=S.running;
+  $('runBtn').disabled=S.running||(window.TUT&&TUT.on&&TUT.step<4);
   renderInfo();
+  if(window.tutTick)tutTick();
 }
 function renderInfo(){
   const t=$('infoText'),a=$('infoAct');a.innerHTML='';
@@ -674,9 +691,67 @@ $('scrapBtn').onclick=()=>{
   if(S.running)return;
   showConfirm('SCRAP THIS ENGINE?','Wipes the grid, bench, credits and move log for today\'s seed. This cannot be undone.','SCRAP IT',()=>{
     try{localStorage.removeItem(saveKey)}catch(e){}
+    TUT.on=false;$('tutBanner').classList.add('hidden');
     fresh();render();
     $('introOv').classList.remove('hidden');
   },true);
+};
+
+/* ============ share ============ */
+$('shareTop').onclick=()=>{
+  const m=settings.mode?` · ${settings.mode} ×${MULT[settings.mode]}`:'';
+  const txt=`DYNAMO Day ${dayNum}${m}\n${rank(S.round)} — Round ${S.round}, ${S.score.toLocaleString()} output`+(S.streak>1?`, 🔥${S.streak} streak`:'')+'\n'+'⚡'.repeat(Math.min(10,S.round));
+  if(navigator.clipboard)navigator.clipboard.writeText(txt);
+  $('shareTop').textContent='COPIED ✓';
+  setTimeout(()=>$('shareTop').textContent='SHARE',1400);
+};
+
+/* ============ tutorial (7-step state machine; RUN gated until valid starter build) ============ */
+window.TUT={on:false,step:0};
+function gridCount(id){return S.grid.filter(p=>p&&p.id===id).length}
+function ampOK(){
+  const i=S.grid.findIndex(p=>p&&p.id==='amp');
+  if(i<0)return null;
+  return adj(i).filter(a=>S.grid[a]&&S.grid[a].id==='dyn').length>=2;
+}
+const TSTEPS=[
+  {t:()=>'Welcome, operator. Tap a <b>Dynamo ⚙</b> on your bench, then tap a grid cell to place it.',
+   done:()=>gridCount('dyn')>=1,hi:'#bench'},
+  {t:()=>'Good. Place your <b>second Dynamo</b> — leave room so one more part can touch both.',
+   done:()=>gridCount('dyn')>=2,hi:'#bench'},
+  {t:()=>ampOK()===false
+     ?'⚠ Your Amp isn\'t touching both Dynamos. Tap it, then tap a cell that borders both (no diagonals).'
+     :'Now the <b>Amp ✕2</b>. It doubles every generator it touches. Place it so it borders <b>both</b> Dynamos.',
+   done:()=>ampOK()===true,hi:'#grid'},
+  {t:()=>'Last part: the <b>Converter ▸</b>. Raw charge scores nothing until it\'s converted. Place it anywhere.',
+   done:()=>gridCount('cnv')>=1,hi:'#bench'},
+  {t:()=>'Engine wired: (5⚡×2) + (5⚡×2) = 20⚡ → <b>20 output</b> vs quota 15. <b>Hit RUN ENGINE.</b>',
+   done:()=>S.score>0,hi:'#runBtn'},
+  {t:()=>'Quota met — credits earned. The depot restocks every round. Tap a card to inspect, then <b>BUY</b>. More conversion capacity is usually the right early pickup.',
+   done:()=>S.sold.some(x=>x),hi:'#shop'},
+  {t:()=>'That\'s the loop: buy → place → run → grow. Quotas climb ~50% per round and stalls cost you pay and streak — keep your engine growing faster. Good luck, operator.',
+   done:null,hi:null,final:true},
+];
+window.tutTick=function(){
+  if(!TUT.on)return;
+  document.querySelectorAll('.tut-glow').forEach(e=>e.classList.remove('tut-glow'));
+  while(TUT.step<TSTEPS.length-1&&TSTEPS[TUT.step].done&&TSTEPS[TUT.step].done())TUT.step++;
+  const st=TSTEPS[TUT.step];
+  $('tutText').innerHTML=(TUT.step+1)+'/'+TSTEPS.length+' · '+st.t();
+  $('tutDone').style.display=st.final?'':'none';
+  if(st.hi){const el=document.querySelector(st.hi);if(el)el.classList.add('tut-glow')}
+};
+$('tutBtn').onclick=()=>{
+  settings.mode='ASSISTED';        /* the tutorial teaches with full instrumentation */
+  $('introOv').classList.add('hidden');
+  TUT.on=true;TUT.step=0;
+  $('tutBanner').classList.remove('hidden');
+  rollShop();save();render();
+};
+$('tutDone').onclick=()=>{
+  TUT.on=false;$('tutBanner').classList.add('hidden');
+  document.querySelectorAll('.tut-glow').forEach(e=>e.classList.remove('tut-glow'));
+  render();
 };
 
 /* ============ intro / mode picker (Bible §2) ============ */
