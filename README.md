@@ -26,10 +26,14 @@ The SQLite database is created at `data/ewl.sqlite` on first run
 |---|---|
 | `web/index.html` | Hub: catalog, league countdowns, leaderboards, sign-in/up, subscription paywall, account panel |
 | `web/platform.js` | SDK games load: league seed strings, save keys, move-log mirror, ranked score submission (fail-safe — games always work offline/signed-out) |
-| `web/games/dynamo.html` | DYNAMO — playable, full operator modes + save + move log |
+| `web/games/dynamo.html` | DYNAMO — playable: tutorial, operator modes, save, move log, share |
 | `web/games/crankworks.html` | CRANKWORKS — playable, integrated (modes, save, move log, ranked submit) |
+| `web/games/coreworks.html` | COREWORKS — playable: socket anatomy + frequency dial, contracts campaign |
+| `web/games/coreworks-mockup.html` | Approved COREWORKS visual reference (kept untouched per spec) |
+| `web/games/pipeworks.html` | PIPEWORKS — playable: pressure networks, rated pipes, BURST |
+| `web/games/foundry.html` | FOUNDRY — playable: alloy chemistry, Materials Codex, ore market |
 | `server/server.js` | Zero-dependency platform server: static hosting + JSON API |
-| `docs/` | Design Bible + all five game specs (COREWORKS, PIPEWORKS, FOUNDRY are next to build) |
+| `docs/` | Design Bible + all five game specs |
 
 ## The model
 

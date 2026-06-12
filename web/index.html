@@ -124,16 +124,31 @@ footer{padding:18px 14px;font-size:10.5px;color:var(--ink-dim);opacity:.8;line-h
         </div>
       </div>
       <div class="card">
-        <div class="ttl"><h3 style="color:var(--prussian)">COREWORKS</h3><span class="tag">IN THE SHOP</span></div>
-        <p>Socket anatomy and a frequency dial. Flux in, vim out — if the resonator and converter band agree.</p>
+        <div class="ttl"><h3 style="color:var(--prussian)">COREWORKS</h3><span class="tag live">PLAYABLE</span></div>
+        <p>Socket anatomy and a frequency dial. Flux in, vim out — if the resonator and converter band agree. Mixed-tier machines are where the engineering lives.</p>
+        <div class="playrow">
+          <a class="main" href="/play/coreworks?league=daily">DAILY</a>
+          <a href="/play/coreworks?league=weekly">WEEKLY</a>
+          <a href="/play/coreworks?league=monthly">MONTHLY</a>
+        </div>
       </div>
       <div class="card">
-        <div class="ttl"><h3 style="color:var(--teal)">PIPEWORKS</h3><span class="tag">IN THE SHOP</span></div>
-        <p>Pressure networks with rated pipes. Boosted copper is a time bomb you chose.</p>
+        <div class="ttl"><h3 style="color:var(--teal)">PIPEWORKS</h3><span class="tag live">PLAYABLE</span></div>
+        <p>Pressure networks with rated pipes — pressure above rating is a <b>BURST</b> you were warned about. Boosted copper is a time bomb you chose.</p>
+        <div class="playrow">
+          <a class="main" href="/play/pipeworks?league=daily">DAILY</a>
+          <a href="/play/pipeworks?league=weekly">WEEKLY</a>
+          <a href="/play/pipeworks?league=monthly">MONTHLY</a>
+        </div>
       </div>
       <div class="card">
-        <div class="ttl"><h3 style="color:var(--ember)">FOUNDRY</h3><span class="tag">IN THE SHOP</span></div>
-        <p>Invented alloy chemistry. Your Materials Codex fills in as you pour — knowledge is the progression.</p>
+        <div class="ttl"><h3 style="color:var(--ember)">FOUNDRY</h3><span class="tag live">PLAYABLE</span></div>
+        <p>Invented alloy chemistry. Your Materials Codex fills in as you pour — knowledge is the progression, and in STANDARD mode it is literally your instrumentation.</p>
+        <div class="playrow">
+          <a class="main" href="/play/foundry?league=daily">DAILY</a>
+          <a href="/play/foundry?league=weekly">WEEKLY</a>
+          <a href="/play/foundry?league=monthly">MONTHLY</a>
+        </div>
       </div>
     </div>
   </section>
@@ -193,7 +208,7 @@ footer{padding:18px 14px;font-size:10.5px;color:var(--ink-dim);opacity:.8;line-h
 <script>
 'use strict';
 const $=id=>document.getElementById(id);
-const GAMES=[['dynamo','DYNAMO'],['crankworks','CRANKWORKS']];
+const GAMES=[['dynamo','DYNAMO'],['crankworks','CRANKWORKS'],['coreworks','COREWORKS'],['pipeworks','PIPEWORKS'],['foundry','FOUNDRY']];
 const LEAGUES=[['daily','DAILY'],['weekly','WEEKLY'],['monthly','MONTHLY']];
 let ME=null, LG=null, curGame='dynamo', curLeague='daily', registering=false;
 
