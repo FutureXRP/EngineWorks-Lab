@@ -572,6 +572,11 @@ function renderInfo(){
     b.textContent='BUY $'+def.cost;b.disabled=S.money<def.cost;
     b.onclick=e=>{e.stopPropagation();buy(idx)};a.appendChild(b);
   }else{
+    if(from==='grid'){
+      const u=document.createElement('button');u.className='small';
+      u.textContent='↩ BENCH';
+      u.onclick=e=>{e.stopPropagation();unplace(idx)};a.appendChild(u);
+    }
     const b=document.createElement('button');b.className='small danger';
     b.textContent='SELL $'+Math.floor(def.cost/2);
     b.onclick=e=>{e.stopPropagation();sell(from,idx)};a.appendChild(b);
@@ -629,6 +634,18 @@ function sell(from,idx){
   if(from==='grid')S.grid[idx]=null;else S.bench.splice(idx,1);
   S.sel=null;
   logMove({t:'sell',from,idx,id:p.id});
+  save();render();
+}
+/* un-place: return a PLACED grid piece to the bench WITHOUT selling. The full piece
+   object (id + any per-piece state) is preserved as-is; position-dependent effects
+   (e.g. Surge Cell) reset naturally on later re-placement via moveSelTo. */
+function unplace(idx){
+  const p=S.grid[idx];
+  if(!p)return;
+  S.grid[idx]=null;
+  S.bench.push(p);
+  S.sel=null;
+  logMove({t:'unplace',idx,id:p.id});
   save();render();
 }
 $('rerollBtn').onclick=()=>{
