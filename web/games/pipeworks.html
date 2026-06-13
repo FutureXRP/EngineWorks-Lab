@@ -195,7 +195,7 @@ button.danger{border-color:#6B3A33;color:var(--red)}
 </div>
 
 <main>
-  <div class="sect-lbl"><span>Manifold Floor</span><span style="letter-spacing:.05em">tap part · tap again to rotate</span></div>
+  <div class="sect-lbl"><span>Manifold Floor</span><span style="letter-spacing:.05em">tap to select · ROTATE ⟳ · tap empty cell to place</span></div>
   <div id="grid"></div>
 
   <div id="info"><span id="infoText">Water flows only through <b>mating ports</b> (the tabs). Pumps feed from the left; taps drink at right and bottom. Every part loses <b>0.5 bar</b>; over its <b>rating</b> it bursts.</span>
@@ -658,7 +658,7 @@ function render(){
 }
 function renderInfo(){
   const t=$('infoText'),a=$('infoAct');a.innerHTML='';
-  if(!S.sel){t.innerHTML='Water flows only through <b>mating ports</b>. Tap a placed part again to <b>rotate</b> it. Every part: <b>−0.5 bar</b>; over its <b>rating</b> it bursts.';return}
+  if(!S.sel){t.innerHTML='Water flows only through <b>mating ports</b>. <b>Tap a part to select</b> it, then <b>ROTATE ⟳</b> or <b>tap an empty cell</b> to place/move it. Every part: <b>−0.5 bar</b>; over its <b>rating</b> it bursts.';return}
   if(S.sel.from==='term'){
     if(S.sel.kind==='P'){
       const pm=S.pumps[S.sel.k],sp=pumpSpec(pm);
@@ -686,7 +686,7 @@ function renderInfo(){
     }
     if(p.id!=='pmp2'){
       const rb=document.createElement('button');rb.className='small';
-      rb.textContent='⟳';
+      rb.textContent='ROTATE ⟳';
       rb.onclick=e=>{e.stopPropagation();rotateSel()};a.appendChild(rb);
     }
     const b=document.createElement('button');b.className='small danger';
@@ -698,9 +698,8 @@ function renderInfo(){
 /* ============ interactions ============ */
 function onPiece(from,idx){
   if(S.running)return;
-  if(S.sel&&S.sel.from===from&&S.sel.idx===idx){rotateSel();return}   /* tap again = rotate */
-  if(S.sel&&(S.sel.from==='grid'||S.sel.from==='bench')&&from==='grid'){moveSelTo(idx);return}
-  S.sel={from,idx};render();
+  if(S.sel&&S.sel.from===from&&S.sel.idx===idx){S.sel=null;render();return}   /* re-tap selected = deselect (NOT rotate) */
+  S.sel={from,idx};render();   /* tap a bench/placed part = select it (no place, no rotate, no swap) */
 }
 function rotateSel(){
   const{from,idx}=S.sel;
@@ -718,22 +717,22 @@ function cycleThrottle(from,idx){
 }
 function onCell(i){
   if(S.running)return;
-  if(!S.sel){render();return}
+  if(S.grid[i]){onPiece('grid',i);return}   /* occupied cell = SELECT that part; never move/swap/rotate onto it */
+  if(!S.sel){render();return}                /* empty cell, nothing held = no-op */
   if(S.sel.from==='shop'||S.sel.from==='term'){S.sel=null;render();return}
-  moveSelTo(i);
+  moveSelTo(i);                              /* empty cell + held bench/grid part = place/move it here */
 }
 function moveSelTo(i){
   const{from,idx}=S.sel;
-  if(from==='grid'&&idx===i){rotateSel();return}
+  if(S.grid[i])return;   /* empty cells are the ONLY drop targets — never place onto an occupied cell */
   const moving=from==='grid'?S.grid[idx]:S.bench[idx];
   if(!moving)return;
   if(moving.id==='pmp2'){
     $('infoText').innerHTML='<b>Pump Mk II</b> installs into a <b>PUMP terminal</b> (left edge), not the grid. Select it, then tap a pump.';
     return;
   }
-  const target=S.grid[i];
-  if(from==='grid'){S.grid[idx]=target||null}
-  else{S.bench.splice(idx,1);if(target)S.bench.push(target)}
+  if(from==='grid')S.grid[idx]=null;   /* moving a placed part leaves its origin empty */
+  else S.bench.splice(idx,1);
   S.grid[i]=moving;
   S.sel={from:'grid',idx:i};
   logMove({t:'place',from,fi:idx,to:i});
@@ -955,8 +954,8 @@ const TSTEPS=[
    hi:'#runBtn',next:true},
   /* ---- PHASE 2 · hands-on core loop (GATED on flow reaching a tap) ---- */
   {t:()=>tutPipes()>=2&&tutFedCount()===0
-     ?'<span class="tcorr">Almost — no tap is drinking yet. Water only crosses <b>mating ports</b> (the little tabs). Tap a placed pipe to <b>rotate</b> it until the tabs line up edge-to-edge, and make the line actually touch a TAP.</span>Lay a <b>mated pipe line</b> from the PUMP to any TAP.'
-     :'Hands on. From your bench, tap a <b>Copper Pipe ─</b>/<b>Elbow └</b>, then tap a grid cell to place it. Build a <i>mating</i> line out of the PUMP\'s inlet (left column) all the way to a TAP. Water flows only through tabs that meet; <b>tap a placed part again to rotate it</b>.',
+     ?'<span class="tcorr">Almost — no tap is drinking yet. Water only crosses <b>mating ports</b> (the little tabs). Select a placed pipe and use the <b>ROTATE ⟳</b> button until the tabs line up edge-to-edge, and make the line actually touch a TAP.</span>Lay a <b>mated pipe line</b> from the PUMP to any TAP.'
+     :'Hands on. From your bench, tap a <b>Copper Pipe ─</b>/<b>Elbow └</b> to select it, then tap an <b>empty grid cell</b> to place it. Build a <i>mating</i> line out of the PUMP\'s inlet (left column) all the way to a TAP. Water flows only through tabs that meet; select any part and hit <b>ROTATE ⟳</b> to turn it.',
    done:()=>tutFedCount()>=1,hi:'#bench'},
   /* ---- PHASE 3 · each mechanic, one at a time ---- */
   {t:()=>'A tap is drinking — watch its readout. Notice the pressure: every part traversed costs <b>−0.5 bar of HEAD LOSS</b>, so the longer the run, the lower the bar arriving at the tap. Short lines keep pressure up.',

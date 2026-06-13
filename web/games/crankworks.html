@@ -151,10 +151,10 @@ button.danger{border-color:#6B3A33;color:var(--red)}
 </div>
 
 <main>
-  <div class="sect-lbl"><span>Assembly Floor</span><span style="letter-spacing:.05em">tap part · tap again to rotate</span></div>
+  <div class="sect-lbl"><span>Assembly Floor</span><span style="letter-spacing:.05em">tap a part · tap an empty cell to place · ROTATE button to turn</span></div>
   <div id="grid"></div>
 
-  <div id="info"><span id="infoText">Power flows only through <b>connected ports</b> (the metal tabs). Orange tab = motor output. Tap a placed part again to rotate it.</span>
+  <div id="info"><span id="infoText">Power flows only through <b>connected ports</b> (the metal tabs). Orange tab = motor output. Tap a part to hold it, tap an empty cell to place it, ROTATE ⟳ to turn it.</span>
     <span class="act" id="infoAct"></span>
   </div>
 
@@ -173,7 +173,7 @@ button.danger{border-color:#6B3A33;color:var(--red)}
 <div class="overlay" id="introOv">
   <div class="modal">
     <h2>CRANK<span>WORKS</span> · how it works</h2>
-    <p>Assemble a <b>drivetrain</b>: power flows from the Motor through physically connected ports. Parts only fit where their ports meet. Tap a placed part to rotate it.</p>
+    <p>Assemble a <b>drivetrain</b>: power flows from the Motor through physically connected ports. Parts only fit where their ports meet. Tap a part to hold it, tap an empty cell to place it, and use the <b>ROTATE ⟳</b> button to turn it.</p>
     <div class="legend">
       <span class="ic" style="color:var(--copper)">▲</span><span><b>Motor</b> — 120 RPM, 12 Nm out of one face</span>
       <span class="ic" style="color:var(--gold)">─ └ ┬</span><span><b>Shafts, elbows, splitters</b> carry rotation (−5% torque each)</span>
@@ -428,7 +428,8 @@ function render(){
   for(let i=0;i<N;i++){
     const c=document.createElement('div');
     c.className='cell';c.dataset.i=i;
-    if(S.sel&&!S.grid[i])c.classList.add('droppable');
+    /* only empty cells are drop targets, and only a held bench/grid part can drop */
+    if(S.sel&&S.sel.from!=='shop'&&!S.grid[i])c.classList.add('droppable');
     if(S.grid[i])c.appendChild(pieceEl(S.grid[i],'grid',i,per));
     c.onclick=()=>onCell(i);
     gridEl.appendChild(c);
@@ -452,7 +453,7 @@ function render(){
 }
 function renderInfo(){
   const t=$('infoText'),a=$('infoAct');a.innerHTML='';
-  if(!S.sel){t.innerHTML='Power flows only through <b>connected ports</b>. Tap a placed part again to <b>rotate</b> it.';return}
+  if(!S.sel){t.innerHTML='Power flows only through <b>connected ports</b> (the metal tabs). Tap a part to hold it, tap an <b>empty cell</b> to place it, and use the <b>ROTATE ⟳</b> button to turn it.';return}
   const{from,idx}=S.sel;
   const p=from==='shop'?{id:S.shop[idx]}:from==='bench'?S.bench[idx]:S.grid[idx];
   if(!p){t.innerHTML='';return}
@@ -463,8 +464,10 @@ function renderInfo(){
     b.textContent='BUY $'+def.cost;b.disabled=S.money<def.cost;
     b.onclick=e=>{e.stopPropagation();buy(idx)};a.appendChild(b);
   }else{
+    /* explicit, labelled rotation — the ONLY way to turn a part (held bench item or
+       placed grid item). Pre-orient a bench part here before dropping it on a cell. */
     const rb=document.createElement('button');rb.className='small';
-    rb.textContent='⟳';
+    rb.textContent='ROTATE ⟳';
     rb.onclick=e=>{e.stopPropagation();rotateSel()};a.appendChild(rb);
     const b=document.createElement('button');b.className='small danger';
     b.textContent='SELL $'+Math.floor(def.cost/2);
@@ -473,31 +476,36 @@ function renderInfo(){
 }
 
 /* ============ interactions ============ */
+/* Selection = one "held" item. Tapping any piece only SELECTS it (or deselects if
+   it's already held). It never places, moves, swaps, or rotates. Rotation is an
+   explicit button (rotateSel) in the info strip; placing/moving only happens by
+   tapping an EMPTY cell (onCell) — the sole drop target. */
 function onPiece(from,idx){
   if(S.running)return;
-  if(S.sel&&S.sel.from===from&&S.sel.idx===idx){rotateSel();return} /* tap again = rotate */
-  if(S.sel&&S.sel.from!=='shop'&&from==='grid'){moveSelTo(idx);return}
+  if(S.sel&&S.sel.from===from&&S.sel.idx===idx){S.sel=null;render();return} /* re-tap held = deselect */
   S.sel={from,idx};render();
 }
 function rotateSel(){
+  if(!S.sel)return;
   const{from,idx}=S.sel;
   const p=from==='grid'?S.grid[idx]:from==='bench'?S.bench[idx]:null;
-  if(!p)return;
+  if(!p)return; /* shop items can't be rotated (no instance to hold rotation) */
   p.rot=(p.rot+1)%4;logMove({t:'rotate',from,idx});render();
 }
 function onCell(i){
   if(S.running)return;
-  if(!S.sel){render();return}
-  if(S.sel.from==='shop')return;
+  if(!S.sel)return;                 /* nothing held → no-op */
+  if(S.sel.from==='shop')return;    /* shop items aren't held instances; buy first */
+  if(S.grid[i])return;              /* occupied cell is not a drop target (piece onclick selects it) */
   moveSelTo(i);
 }
+/* Move the held bench/grid piece into an EMPTY cell i (guaranteed empty by onCell). */
 function moveSelTo(i){
   const{from,idx}=S.sel;
-  if(from==='grid'&&idx===i){rotateSel();return}
   const moving=from==='grid'?S.grid[idx]:S.bench[idx];
-  const target=S.grid[i];
-  if(from==='grid'){S.grid[idx]=target||null}
-  else{S.bench.splice(idx,1);if(target)S.bench.push(target)}
+  if(!moving)return;
+  if(from==='grid'){S.grid[idx]=null}
+  else{S.bench.splice(idx,1)}
   S.grid[i]=moving;
   S.sel={from:'grid',idx:i};logMove({t:'place',from,idx,to:i});render();
 }
@@ -632,20 +640,20 @@ const TSTEPS=[
   {t:()=>'When the line is ready you press <b>ENGAGE DRIVE</b> to run it. Meet the demand and you get paid; miss it and the line stalls (we\'ll cover that). Let\'s build one.',
    hi:'#runBtn'},
   /* ── phase 2 · hands-on core loop (GATED on real game state) ─────── */
-  {t:()=>'Hands on. Your <b>bench</b> holds a Motor ▲, two Shafts ─ and a Generator ◎. Tap the <b>Motor ▲</b>, then tap a grid cell to place it.',
+  {t:()=>'Hands on. Your <b>bench</b> holds a Motor ▲, two Shafts ─ and a Generator ◎. Tap the <b>Motor ▲</b> to hold it, then tap an <b>empty grid cell</b> to place it.',
    done:()=>gridCount('mot')>=1,hi:'#bench'},
   {t:()=>hasUnpoweredPart()&&!loadPowered()
-     ?'⚠ A part is placed but <b>dead</b> (reads <b>—</b>): power only crosses where two ports <b>mate</b> on touching faces. Tap a part to <b>rotate</b> it so its nub meets the next one — build Motor → Shaft → Generator in a line.'
-     :'Now wire power to a load. Power flows ONLY through connected <b>ports</b> — the metal nubs (orange nub = motor output). Place a <b>Shaft ─</b> off the motor\'s output face, then the <b>Generator ◎</b>, mating nub to nub, until watts appear.',
+     ?'⚠ A part is placed but <b>dead</b> (reads <b>—</b>): power only crosses where two ports <b>mate</b> on touching faces. Tap the part to select it, then press the <b>ROTATE ⟳</b> button in the info strip until its nub meets the next one — build Motor → Shaft → Generator in a line.'
+     :'Now wire power to a load. Power flows ONLY through connected <b>ports</b> — the metal nubs (orange nub = motor output). Tap a <b>Shaft ─</b> then tap an empty cell off the motor\'s output face, add the <b>Generator ◎</b>, and use <b>ROTATE ⟳</b> to mate nub to nub until watts appear.',
    done:()=>loadPowered()&&wattsLive()>0,hi:'#grid'},
   /* ── phase 3 · each mechanic, one at a time ─────────────────────── */
-  {t:()=>'Watts flowing. Two things you just used: <b>port mating</b> (nubs must touch on opposing faces) and <b>rotation</b> — tapping an already-selected part spins it 90° so its ports line up. Every placed part shows its live <b>RPM·Nm</b>, or <b>—</b> when nothing reaches it.',
-   hi:'#grid'},
+  {t:()=>'Watts flowing. Two things you just used: <b>port mating</b> (nubs must touch on opposing faces) and <b>rotation</b> — select a part and the <b>ROTATE ⟳</b> button spins it 90° so its ports line up (it also pre-orients a held bench part before you drop it). Every placed part shows its live <b>RPM·Nm</b>, or <b>—</b> when nothing reaches it.',
+   hi:'#info'},
   {t:()=>'<b>Friction.</b> Each transmission part you pass through (Shaft, Elbow, Gearbox, T-Split) costs <b>−5% torque</b>. Long chains bleed Nm — keep lines tight.',
    hi:'#grid'},
   {t:()=>'<b>Oiler ◇.</b> Drop one inline and everything <b>downstream of it</b> loses no torque to friction at all — the fix for a long line that\'s run low on Nm.',
    hi:'#grid'},
-  {t:()=>'<b>Gearbox ⚙</b> — reversible 2:1, trading RPM for torque. Enter the <b>S</b> end → <b>2× RPM, ½ torque</b>. Enter the <b>F</b> end → <b>½ RPM, 2× torque</b>. The F/S labels mark which face is which; rotate to choose.',
+  {t:()=>'<b>Gearbox ⚙</b> — reversible 2:1, trading RPM for torque. Enter the <b>S</b> end → <b>2× RPM, ½ torque</b>. Enter the <b>F</b> end → <b>½ RPM, 2× torque</b>. The F/S labels mark which face is which; use <b>ROTATE ⟳</b> to choose.',
    hi:'#grid'},
   {t:()=>'<b>T-Split ┬.</b> Feeds several lines at once, but <b>torque divides</b> evenly among the live branches (RPM is unchanged). One motor, many loads — at a price.',
    hi:'#grid'},
