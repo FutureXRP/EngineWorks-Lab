@@ -104,6 +104,9 @@ button.danger{border-color:#6B3A33;color:var(--red)}
 #tutBanner{margin:10px 14px 0;border:1px solid var(--amber-dim);border-left:3px solid var(--amber);background:#1E1A10;border-radius:5px;padding:9px 11px;font-size:12px;line-height:1.5;color:var(--ink);display:flex;justify-content:space-between;gap:10px;align-items:center}
 #tutBanner.hidden{display:none}
 #tutBanner b{color:var(--amber)}
+#tutBanner .tut-ctl{display:flex;flex-direction:column;gap:5px;flex-shrink:0}
+#tutBanner .tut-ctl button{padding:5px 10px;font-size:10px}
+#tutNext{border-color:var(--amber-dim);color:var(--amber)}
 .tut-glow{box-shadow:0 0 0 2px var(--amber),0 0 16px rgba(255,174,69,.35)!important;border-radius:6px}
 .floater{position:absolute;left:50%;top:0;transform:translateX(-50%);font-family:var(--mono);font-weight:600;font-size:12px;pointer-events:none;animation:floatUp .9s ease-out forwards;white-space:nowrap;z-index:5}
 .floater.charge{color:var(--amber)}
@@ -139,6 +142,7 @@ button.danger{border-color:#6B3A33;color:var(--red)}
     <h1>DYNA<span>MO</span></h1>
     <div style="display:flex;align-items:center;gap:8px">
       <div class="daytag" id="dayTag"></div>
+      <button class="small" id="helpBtn" title="Replay the tutorial">❔ HELP</button>
       <button class="small" id="shareTop">SHARE</button>
     </div>
   </div>
@@ -158,7 +162,7 @@ button.danger{border-color:#6B3A33;color:var(--red)}
   </div>
 </header>
 
-<div id="tutBanner" class="hidden"><span id="tutText"></span><button class="small" id="tutDone" style="display:none">DONE</button></div>
+<div id="tutBanner" class="hidden"><span id="tutText"></span><span class="tut-ctl"><button class="small" id="tutNext">NEXT</button><button class="small" id="tutDone">SKIP</button></span></div>
 
 <main>
   <div class="sect-lbl"><span>Engine Floor</span><button class="small" id="rowBtn">+ROW $12</button></div>
@@ -476,7 +480,7 @@ function render(){
     shopEl.appendChild(sc);
   });
   $('rerollBtn').disabled=S.money<2||S.running;
-  $('runBtn').disabled=S.running||(window.TUT&&TUT.on&&TUT.step<4);
+  $('runBtn').disabled=S.running||(window.tutRunLocked&&tutRunLocked());
   renderInfo();
   if(window.tutTick)tutTick();
 }
@@ -706,7 +710,12 @@ $('shareTop').onclick=()=>{
   setTimeout(()=>$('shareTop').textContent='SHARE',1400);
 };
 
-/* ============ tutorial (7-step state machine; RUN gated until valid starter build) ============ */
+/* ============ tutorial — robust interactive coach ============
+   Gated action steps verify against real S; text steps advance via NEXT.
+   Never adds rng() draws, never fakes a score, cleans up all glow on exit.
+   PHASES: 1 goal+commit+gauge · 2 core loop (gated) · 3 each mechanic ·
+           4 failure vocab (WASTED/STALLED/Fuse) · 5 modes+economy ·
+           6 a winning opening · 7 free-play sign-off. */
 window.TUT={on:false,step:0};
 function gridCount(id){return S.grid.filter(p=>p&&p.id===id).length}
 function ampOK(){
@@ -714,45 +723,125 @@ function ampOK(){
   if(i<0)return null;
   return adj(i).filter(a=>S.grid[a]&&S.grid[a].id==='dyn').length>=2;
 }
+/* a converter sits orthogonally next to a generator (keeps the taught core tidy) */
+function cnvFed(){
+  for(let i=0;i<S.rows*COLS;i++){
+    const p=S.grid[i];
+    if(p&&CNVDEF[p.id]&&adj(i).some(a=>S.grid[a]&&GENBASE[S.grid[a].id]))return true;
+  }
+  return false;
+}
+/* TSTEPS entries: {t, hi, done, gate, lockRun, final}
+   - gate:true  → ACTION step: advances ONLY when done() verifies real state
+     (t() returns a gentle correction line when the player does the wrong thing)
+   - gate falsy → TEXT step: advances when the player taps NEXT
+   - lockRun:true keeps RUN ENGINE disabled until the dedicated run step */
 const TSTEPS=[
-  {t:()=>'Welcome, operator. Tap a <b>Dynamo ⚙</b> on your bench, then tap a grid cell to place it.',
-   done:()=>gridCount('dyn')>=1,hi:'#bench'},
-  {t:()=>'Good. Place your <b>second Dynamo</b> — leave room so one more part can touch both.',
-   done:()=>gridCount('dyn')>=2,hi:'#bench'},
+  /* ---- PHASE 1: the goal, the commit, the gauge ---- */
+  {t:()=>'Welcome, operator. Your job: build a machine whose <b>OUTPUT</b> beats a climbing <b>QUOTA</b> every round — same seed for everyone today. I\'ll walk you through it. Tap <b>NEXT</b>.',
+   hi:null,lockRun:true},
+  {t:()=>'See the <b>QUOTA gauge</b> up top. The faint amber bar is the <b>ghost</b> — a live projection of the points your current layout will score. Beat the quota line and you get paid.',
+   hi:'.gauge-wrap',lockRun:true},
+  {t:()=>'Nothing is final until you press <b>RUN ENGINE</b> at the bottom — that\'s the commit. A run resolves in order: stored charge → generators fire → converters drink the pool → capacitors bank leftovers → the rest is WASTED. Let\'s wire one. <b>NEXT.</b>',
+   hi:'#runBtn',lockRun:true},
+  /* ---- PHASE 2: the core loop, hands-on & GATED ---- */
+  {t:()=>'Hands-on now. Generators make ⚡ charge into one <b>shared pool</b>. Tap a <b>Dynamo ⚙</b> on your bench, then tap a grid cell to place it.',
+   done:()=>gridCount('dyn')>=1,gate:true,hi:'#bench',lockRun:true},
+  {t:()=>'Place your <b>second Dynamo ⚙</b> — leave a gap so one more part can sit touching <b>both</b> of them.',
+   done:()=>gridCount('dyn')>=2,gate:true,hi:'#bench',lockRun:true},
   {t:()=>ampOK()===false
-     ?'⚠ Your Amp isn\'t touching both Dynamos. Tap it, then tap a cell that borders both (no diagonals).'
-     :'Now the <b>Amp ✕2</b>. It doubles every generator it touches. Place it so it borders <b>both</b> Dynamos.',
-   done:()=>ampOK()===true,hi:'#grid'},
-  {t:()=>'Last part: the <b>Converter ▸</b>. Raw charge scores nothing until it\'s converted. Place it anywhere.',
-   done:()=>gridCount('cnv')>=1,hi:'#bench'},
-  {t:()=>'Engine wired: (5⚡×2) + (5⚡×2) = 20⚡ → <b>20 output</b> vs quota 15. <b>Hit RUN ENGINE.</b>',
-   done:()=>S.score>0,hi:'#runBtn'},
-  {t:()=>'Quota met — credits earned. The depot restocks every round. Tap a card to inspect, then <b>BUY</b>. More conversion capacity is usually the right early pickup.',
-   done:()=>S.sold.some(x=>x),hi:'#shop'},
-  {t:()=>'That\'s the loop: buy → place → run → grow. Quotas climb ~50% per round and stalls cost you pay and streak — keep your engine growing faster. Good luck, operator.',
-   done:null,hi:null,final:true},
+     ?'⚠ Not quite — your <b>Amp</b> must border <b>both</b> Dynamos (orthogonally, no diagonals). Tap it, then tap a cell between them.'
+     :'Now the <b>Amp ✕2</b>. Boosters don\'t make charge — they multiply neighbors. Place the Amp so it borders <b>both</b> Dynamos.',
+   done:()=>ampOK()===true,gate:true,hi:'#grid',lockRun:true},
+  {t:()=>cnvFed()
+     ?'Wired. The Amp doubles each Dynamo: (5⚡×2)+(5⚡×2)=20⚡ in the pool, and the Converter turns it to <b>20 output</b>. <b>NEXT.</b>'
+     :'⚡ Raw charge scores <b>nothing</b> until it\'s converted. Place the <b>Converter ▸</b> so it borders a Dynamo (it drinks the shared pool wherever it sits — adjacency just keeps your core tidy).',
+   done:()=>gridCount('cnv')>=1&&cnvFed(),gate:true,hi:'#bench',lockRun:true},
+  {t:()=>'That\'s a working engine: <b>20 output vs a 15 quota</b>. Press <b>RUN ENGINE</b> and watch it resolve in causal order.',
+   done:()=>S.score>0,gate:true,hi:'#runBtn'},
+  {t:()=>'Quota met — credits paid, the quota climbs, the depot restocks. That\'s the loop: <b>buy → place → run → grow</b>. Now the mechanics that win rounds. <b>NEXT.</b>',
+   hi:null},
+  /* ---- PHASE 3: each mechanic, one at a time, with a highlight ---- */
+  {t:()=>'<b>Multipliers stack multiplicatively.</b> An <b>Amp ✕2</b> and a <b>Coil ✕3</b> both touching one generator give ×6, not ×5. Cluster boosters around your strongest plant. <b>NEXT.</b>',
+   hi:'#grid'},
+  {t:()=>'<b>Relay ↻</b> — every adjacent part triggers twice: bordering generators output ×(1+relays), bordering converters get ×(1+relays) capacity. One Relay between a plant and a converter pumps both. <b>NEXT.</b>',
+   hi:'#grid'},
+  {t:()=>'<b>Overclock ▲</b> is global: +4⚡ <b>base</b> to every generator on the grid, no adjacency needed — and that +4 lands <b>before</b> multipliers, so amps and coils scale it too. <b>NEXT.</b>',
+   hi:null},
+  {t:()=>'<b>Reading order matters.</b> Generators fire, then converters drink the pool left-to-right, top-to-bottom. A hungry <b>Refinery</b> placed early eats first; a small Converter after it gets the scraps. Order converters by appetite. <b>NEXT.</b>',
+   hi:'#grid'},
+  {t:()=>'<b>Converter ▸</b> vs <b>Refinery ▸▸</b>: the Converter drinks ≤30⚡ at <b>1pt/⚡</b>; the Refinery drinks ≤60⚡ at <b>1.5pt/⚡</b> — more capacity AND a better rate, but it only pays off if your pool is big enough to fill it. <b>NEXT.</b>',
+   hi:'#shop'},
+  {t:()=>'<b>Capacitor ◎</b> banks up to 40⚡ of <b>leftover</b> charge after converters drink, then dumps it into next run\'s pool. It turns an overbuilt core\'s overflow into a head start. <b>NEXT.</b>',
+   hi:null},
+  /* ---- PHASE 4: the failure / diagnostic vocabulary ---- */
+  {t:()=>'Now the words the machine uses when something\'s off. <b>WASTED</b> ⚡ = charge your converters couldn\'t drink. In ASSISTED it shows in the ghost line as "⚠ n⚡ waste"; the run report always spells it out. <b>NEXT.</b>',
+   hi:'.gauge-wrap'},
+  {t:()=>'Three fixes for <b>WASTED</b>: (1) add converter capacity — a Converter/Refinery, or relay-boost one; (2) bank the overflow in a <b>Capacitor ◎</b>; (3) if you truly can\'t use it, a Scrapper turns waste into cash. Never let charge evaporate for free. <b>NEXT.</b>',
+   hi:null},
+  {t:()=>'<b>STALLED</b> = you missed the quota. No death here: you get a <b>$2</b> subsidy, your streak resets to 0, and the <b>same quota waits</b> next round. There is always a way forward. <b>NEXT.</b>',
+   hi:null},
+  {t:()=>'<b>Fuse ◉</b> is insurance. On a missed quota, one Fuse <b>burns</b> off the grid to preserve your base pay and your streak instead of stalling — a safety net for a risky reach. <b>NEXT.</b>',
+   hi:null},
+  /* ---- PHASE 5: operator modes + economy ---- */
+  {t:()=>'<b>Operator modes</b> trade instrumentation for score. <b>ASSISTED ×1.0</b> shows everything (you\'re in it now). <b>STANDARD ×1.25</b> shows only the projected total. <b>MANUAL ×1.5</b> shows nothing live — <b>Meter ◫</b> parts buy your readouts back. Same sim, same seed; only the help changes. <b>NEXT.</b>',
+   hi:'#modeBadge'},
+  {t:()=>'<b>Economy</b>, one line: on a clear you earn <b>base (4+round) + surplus (for overshooting) + interest (on saved credits) + streak</b>. Bank credits to earn interest, keep streaks alive, and don\'t over-spend the reroll. <b>NEXT.</b>',
+   hi:'#stMoney'},
+  /* ---- PHASE 6: a concrete winning opening ---- */
+  {t:()=>'<b>A winning round-1 opening:</b> your two Dynamos + Amp already make 20⚡ vs the 15 quota — you\'re clear. Spend the payout on a <b>second Converter</b> or a <b>Reactor ☢ (12⚡)</b> so next round\'s 23 quota is comfortable. Grow capacity a step ahead of the quota. <b>NEXT.</b>',
+   hi:'#shop'},
+  /* ---- PHASE 7: free-play sign-off ---- */
+  {t:()=>'That\'s the whole machine. Quotas climb ~50% a round, so keep your engine growing faster than they do. Tap <b>❔ HELP</b> in the header anytime to replay this. Good luck, operator.',
+   hi:null,final:true},
 ];
+/* index of the first run-capable step (RUN stays locked before it) */
+function tutFirstRunStep(){const i=TSTEPS.findIndex(s=>!s.lockRun);return i<0?0:i}
+window.tutRunLocked=function(){return TUT.on&&TUT.step<tutFirstRunStep()};
 window.tutTick=function(){
   if(!TUT.on)return;
   document.querySelectorAll('.tut-glow').forEach(e=>e.classList.remove('tut-glow'));
-  while(TUT.step<TSTEPS.length-1&&TSTEPS[TUT.step].done&&TSTEPS[TUT.step].done())TUT.step++;
+  /* auto-advance only through ACTION (gate) steps the player has already satisfied */
+  while(TUT.step<TSTEPS.length-1){
+    const s=TSTEPS[TUT.step];
+    if(s.gate&&s.done&&s.done()){TUT.step++;continue}
+    break;
+  }
   const st=TSTEPS[TUT.step];
-  $('tutText').innerHTML=(TUT.step+1)+'/'+TSTEPS.length+' · '+st.t();
-  $('tutDone').style.display=st.final?'':'none';
+  $('tutText').innerHTML='<b>('+(TUT.step+1)+'/'+TSTEPS.length+')</b> '+st.t();
+  const gated=!!st.gate&&!st.final;
+  /* NEXT advances text steps; on gated steps it's hidden (auto-advance handles completion) */
+  $('tutNext').style.display=(st.final||gated)?'none':'';
+  $('tutDone').textContent=st.final?'DONE':'SKIP';
+  $('tutDone').style.display='';
   if(st.hi){const el=document.querySelector(st.hi);if(el)el.classList.add('tut-glow')}
 };
-$('tutBtn').onclick=()=>{
-  settings.mode='ASSISTED';        /* the tutorial teaches with full instrumentation */
+function tutAdvance(){
+  if(!TUT.on)return;
+  const st=TSTEPS[TUT.step];
+  if(st.final){tutClose();return}
+  if(st.gate)return;            /* gated steps never advance on NEXT */
+  if(TUT.step<TSTEPS.length-1)TUT.step++;
+  render();
+}
+function tutOpen(){
+  settings.mode='ASSISTED';     /* the tutorial teaches with full instrumentation */
   $('introOv').classList.add('hidden');
   TUT.on=true;TUT.step=0;
   $('tutBanner').classList.remove('hidden');
-  rollShop();save();render();
-};
-$('tutDone').onclick=()=>{
+  /* only roll a shop if there isn't one yet — re-opening mid-game must NOT consume rng */
+  if(!S.shop||S.shop.length===0)rollShop();
+  save();render();
+}
+function tutClose(){
   TUT.on=false;$('tutBanner').classList.add('hidden');
   document.querySelectorAll('.tut-glow').forEach(e=>e.classList.remove('tut-glow'));
   render();
-};
+}
+$('tutBtn').onclick=tutOpen;
+$('helpBtn').onclick=tutOpen;
+$('tutNext').onclick=tutAdvance;
+$('tutDone').onclick=tutClose;
 
 /* ============ intro / mode picker (Bible §2) ============ */
 let pickMode='ASSISTED';

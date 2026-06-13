@@ -98,6 +98,13 @@ button.small{padding:5px 9px;font-size:10px}
 button.danger{border-color:#6B3A33;color:var(--red)}
 #runbar{position:sticky;bottom:0;padding:10px 14px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(180deg,transparent,#0F1112 30%);display:flex;gap:8px}
 #runBtn{flex:1;font-size:15px;padding:13px;letter-spacing:.25em;background:linear-gradient(180deg,#33200F,#241710);border:1px solid var(--amber-dim);color:var(--copper)}
+/* tutorial coach (copper palette) */
+.helpbtn{font-size:10px;padding:4px 8px;border-color:var(--amber-dim);color:var(--copper)}
+#tutBanner{margin:10px 14px 0;border:1px solid var(--amber-dim);border-left:3px solid var(--copper);background:#1E1810;border-radius:5px;padding:9px 11px;font-size:12px;line-height:1.5;color:var(--ink);display:flex;justify-content:space-between;gap:10px;align-items:center}
+#tutBanner.hidden{display:none}
+#tutBanner b{color:var(--copper)}
+#tutBanner .tutbtns{display:flex;gap:6px;flex-shrink:0}
+.tut-glow{box-shadow:0 0 0 2px var(--copper),0 0 16px rgba(224,138,90,.4)!important;border-radius:6px;position:relative;z-index:1}
 .floater{position:absolute;left:50%;top:0;transform:translateX(-50%);font-family:var(--mono);font-weight:600;font-size:12px;pointer-events:none;animation:floatUp .9s ease-out forwards;white-space:nowrap;z-index:5}
 .floater.charge{color:var(--copper)}
 .floater.pts{color:var(--green)}
@@ -105,7 +112,7 @@ button.danger{border-color:#6B3A33;color:var(--red)}
 @media (prefers-reduced-motion: reduce){.floater{animation:none;opacity:0}.gauge .fill,.gauge .ghost{transition:none}}
 .overlay{position:fixed;inset:0;background:rgba(10,12,13,.9);z-index:50;display:flex;align-items:center;justify-content:center;padding:20px}
 .overlay.hidden{display:none}
-.modal{background:var(--panel);border:1px solid var(--line-hi);border-radius:8px;padding:22px 20px;max-width:380px;width:100%}
+.modal{background:var(--panel);border:1px solid var(--line-hi);border-radius:8px;padding:22px 20px;max-width:380px;width:100%;max-height:90vh;overflow-y:auto}
 .modal h2{font-family:var(--disp);letter-spacing:.18em;font-size:17px;margin-bottom:12px}
 .modal h2 span{color:var(--copper)}
 .modal p{font-size:12.5px;line-height:1.6;color:var(--ink-dim);margin-bottom:10px}
@@ -121,7 +128,10 @@ button.danger{border-color:#6B3A33;color:var(--red)}
 <header>
   <div class="brand">
     <h1>CRANK<span>WORKS</span></h1>
-    <div class="daytag" id="dayTag"></div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="daytag" id="dayTag"></div>
+      <button class="small helpbtn" id="tutHelp">❔ HELP</button>
+    </div>
   </div>
   <div class="stats">
     <div class="stat"><div class="lbl">Round</div><div class="val" id="stRound">1</div></div>
@@ -134,6 +144,11 @@ button.danger{border-color:#6B3A33;color:var(--red)}
     <div class="gauge"><div class="ghost" id="gaugeGhost"></div><div class="fill" id="gaugeFill"></div><div class="ticks"></div></div>
   </div>
 </header>
+
+<div id="tutBanner" class="hidden">
+  <span id="tutText"></span>
+  <span class="tutbtns"><button class="small" id="tutNext">NEXT</button><button class="small" id="tutDone">SKIP</button></span>
+</div>
 
 <main>
   <div class="sect-lbl"><span>Assembly Floor</span><span style="letter-spacing:.05em">tap part · tap again to rotate</span></div>
@@ -172,6 +187,8 @@ button.danger{border-color:#6B3A33;color:var(--red)}
       <button data-m="STANDARD">STANDARD ×1.25</button>
       <button data-m="MANUAL">MANUAL ×1.5</button>
     </div>
+    <p style="margin-top:12px;margin-bottom:0;text-align:center">New to the floor? <b>Take the guided walkthrough.</b></p>
+    <div class="btnrow"><button id="tutBtn">TUTORIAL</button></div>
   </div>
 </div>
 
@@ -431,6 +448,7 @@ function render(){
   $('rerollBtn').disabled=S.money<2||S.running;
   $('runBtn').disabled=S.running;
   renderInfo();
+  if(window.tutTick)tutTick();
 }
 function renderInfo(){
   const t=$('infoText'),a=$('infoAct');a.innerHTML='';
@@ -551,7 +569,8 @@ async function runEngine(){
     $('roundText').innerHTML=`Delivered <b>${watts}W</b> against <b>${q}W</b> demand. No pay this shift — a <b>$2</b> scrap subsidy, and your streak resets. Check the readouts: sputtering loads show <b>!</b>, dead parts show <b>—</b>. The demand stands: <b>${q}W</b>.`;
   }
   logMove({t:'run',watts,round:S.round,met:watts>=q});
-  if(window.EWL)EWL.submitScore({score:S.score,round:S.round,mode:SETTINGS.mode});
+  /* tutorial drives a real run; keep it unranked until the coach is dismissed (no bogus posts) */
+  if(window.EWL&&!(window.TUT&&TUT.on))EWL.submitScore({score:S.score,round:S.round,mode:SETTINGS.mode});
   $('roundOv').classList.remove('hidden');
 }
 function tickGauge(){
@@ -580,8 +599,109 @@ $('scrapBtn').onclick=()=>{
   if(!confirm('Scrap this machine? The whole run resets — the seed stays.'))return;
   try{localStorage.removeItem(SAVE_KEY)}catch(e){}
   S=freshState();restoreRng(0);if(window.EWL)EWL.moveLog=[];
+  if(window.TUT){TUT.on=false;$('tutBanner').classList.add('hidden');
+    document.querySelectorAll('.tut-glow').forEach(e=>e.classList.remove('tut-glow'))}
   rollShop();$('introOv').classList.remove('hidden');render();
 };
+
+/* ============ interactive tutorial (DYNAMO pattern, copper-recolored) ============
+   A persistent coach banner walks the operator through every mechanic. TEXT steps
+   advance with NEXT; ACTION steps are GATED against real game state (sim()/grid) and
+   show a gentle correction line when the build is wrong. Glow highlights point at the
+   relevant UI. Re-openable from intro (TUTORIAL) or header (❔ HELP); fully cleaned up
+   on exit. Submit is suppressed while the tutorial is on (the run is real but unranked
+   until the coach is dismissed) — see runEngine(). It never touches the rng stream. */
+window.TUT={on:false,step:0};
+function gridCount(id){return S.grid.filter(p=>p&&p.id===id).length}
+/* a load is truly powered only when flow reaches it through mated ports */
+function wattsLive(){try{return sim().watts}catch(e){return 0}}
+function loadPowered(){
+  try{const f=sim();return Object.values(f.per).some(x=>x&&x.kind==='load')}catch(e){return false}
+}
+/* a transmission/load is placed but stranded (no flow claimed it) → correction cue */
+function hasUnpoweredPart(){
+  try{const f=sim();
+    for(let i=0;i<N;i++){const p=S.grid[i];if(p&&p.id!=='mot'&&!f.per[i])return true}
+    return false;
+  }catch(e){return false}
+}
+const TSTEPS=[
+  /* ── phase 1 · the goal ─────────────────────────────────────────── */
+  {t:()=>'Welcome, operator. The job each round: build a drivetrain that delivers the <b>DEMAND</b> in watts — the gauge up top. The pale <b>ghost</b> bar shows your projected output before you commit. Tap NEXT.',
+   hi:'.gauge-wrap'},
+  {t:()=>'When the line is ready you press <b>ENGAGE DRIVE</b> to run it. Meet the demand and you get paid; miss it and the line stalls (we\'ll cover that). Let\'s build one.',
+   hi:'#runBtn'},
+  /* ── phase 2 · hands-on core loop (GATED on real game state) ─────── */
+  {t:()=>'Hands on. Your <b>bench</b> holds a Motor ▲, two Shafts ─ and a Generator ◎. Tap the <b>Motor ▲</b>, then tap a grid cell to place it.',
+   done:()=>gridCount('mot')>=1,hi:'#bench'},
+  {t:()=>hasUnpoweredPart()&&!loadPowered()
+     ?'⚠ A part is placed but <b>dead</b> (reads <b>—</b>): power only crosses where two ports <b>mate</b> on touching faces. Tap a part to <b>rotate</b> it so its nub meets the next one — build Motor → Shaft → Generator in a line.'
+     :'Now wire power to a load. Power flows ONLY through connected <b>ports</b> — the metal nubs (orange nub = motor output). Place a <b>Shaft ─</b> off the motor\'s output face, then the <b>Generator ◎</b>, mating nub to nub, until watts appear.',
+   done:()=>loadPowered()&&wattsLive()>0,hi:'#grid'},
+  /* ── phase 3 · each mechanic, one at a time ─────────────────────── */
+  {t:()=>'Watts flowing. Two things you just used: <b>port mating</b> (nubs must touch on opposing faces) and <b>rotation</b> — tapping an already-selected part spins it 90° so its ports line up. Every placed part shows its live <b>RPM·Nm</b>, or <b>—</b> when nothing reaches it.',
+   hi:'#grid'},
+  {t:()=>'<b>Friction.</b> Each transmission part you pass through (Shaft, Elbow, Gearbox, T-Split) costs <b>−5% torque</b>. Long chains bleed Nm — keep lines tight.',
+   hi:'#grid'},
+  {t:()=>'<b>Oiler ◇.</b> Drop one inline and everything <b>downstream of it</b> loses no torque to friction at all — the fix for a long line that\'s run low on Nm.',
+   hi:'#grid'},
+  {t:()=>'<b>Gearbox ⚙</b> — reversible 2:1, trading RPM for torque. Enter the <b>S</b> end → <b>2× RPM, ½ torque</b>. Enter the <b>F</b> end → <b>½ RPM, 2× torque</b>. The F/S labels mark which face is which; rotate to choose.',
+   hi:'#grid'},
+  {t:()=>'<b>T-Split ┬.</b> Feeds several lines at once, but <b>torque divides</b> evenly among the live branches (RPM is unchanged). One motor, many loads — at a price.',
+   hi:'#grid'},
+  {t:()=>'<b>Loads</b> make the watts. <b>Generator ◎</b>: W = RPM × Nm ÷ 10, anywhere. <b>Turbine ✪</b>: doubles watts at <b>≥300 RPM</b> (gear up the RPM end). <b>Press ▣</b>: doubles at <b>≥30 Nm</b> (gear up the torque end). Below their band they sputter to a fifth.',
+   hi:'#grid'},
+  /* ── phase 4 · failure / diagnostic vocabulary ──────────────────── */
+  {t:()=>'Read the readouts to diagnose. A load showing <b>—</b> is <b>dead</b> — nothing reaches it (a port doesn\'t mate). A load showing <b>!</b> is <b>sputtering</b> — flow arrives but misses its RPM/Nm threshold (only ⅕ watts).',
+   hi:'#info'},
+  {t:()=>'Miss the demand on a run and the line <b>STALLS</b>: no pay, your streak resets, you get a <b>$2</b> scrap subsidy — and the same demand simply waits for next shift. There\'s always a way forward.',
+   hi:'.gauge-wrap'},
+  /* ── phase 5 · operator modes + economy ─────────────────────────── */
+  {t:()=>'<b>Operator modes</b> change only what the machine tells you before you commit — the physics, seed and economy are identical. <b>ASSISTED ×1.0</b> shows live per-part readouts + the ghost. <b>STANDARD ×1.25</b> shows the projected total only. <b>MANUAL ×1.5</b> shows nothing live — for the higher ranked multiplier.',
+   hi:'#dayTag'},
+  {t:()=>'<b>Economy:</b> meeting demand pays a base that grows with the round, plus bonuses for surplus, banked credits (interest) and win streak; the Machine Shop restocks each round and you can <b>REROLL $2</b> for fresh parts.',
+   hi:'#rerollBtn'},
+  /* ── phase 6 · a concrete winning opening ───────────────────────── */
+  {t:()=>'<b>Round 1 opening (80W):</b> place the <b>Motor</b>, a <b>Shaft</b> off its output, then a <b>Generator</b> in one straight mated line — that\'s 120 RPM × ~11 Nm ÷ 10 ≈ <b>130W</b>, clear. Then press ENGAGE DRIVE.',
+   hi:'#runBtn'},
+  {t:()=>'Reaching for a <b>Turbine ✪</b> later? It wants <b>≥300 RPM</b>, but the Motor only spins 120. Feed it through a <b>Gearbox</b> on its <b>S</b> end first (2× RPM → 240… two boxes, or a 3:1, to clear 300) so the Turbine hits its doubling band.',
+   hi:'#grid'},
+  /* ── phase 7 · sign-off ─────────────────────────────────────────── */
+  {t:()=>'That\'s the whole craft: mate ports, manage friction, gear for the band, feed the right load. Build → ENGAGE → get paid → grow. The shop and demand climb together — keep the line ahead. Good luck, operator.',
+   done:null,hi:null,final:true},
+];
+function tutClearGlow(){document.querySelectorAll('.tut-glow').forEach(e=>e.classList.remove('tut-glow'))}
+window.tutTick=function(){
+  if(!TUT.on)return;
+  tutClearGlow();
+  /* auto-advance through any satisfied ACTION gates (never past the final step) */
+  while(TUT.step<TSTEPS.length-1&&TSTEPS[TUT.step].done&&TSTEPS[TUT.step].done())TUT.step++;
+  if(TUT.step>=TSTEPS.length)TUT.step=TSTEPS.length-1;
+  const st=TSTEPS[TUT.step];
+  $('tutText').innerHTML='('+(TUT.step+1)+'/'+TSTEPS.length+') '+st.t();
+  const gated=!!st.done&&!st.final;
+  /* NEXT only on text steps; gated steps advance by doing the verified action */
+  $('tutNext').style.display=(gated||st.final)?'none':'';
+  $('tutDone').textContent=st.final?'DONE':'SKIP';
+  if(st.hi){const el=document.querySelector(st.hi);if(el)el.classList.add('tut-glow')}
+};
+function tutStart(){
+  SETTINGS.mode='ASSISTED';          /* teach with full instrumentation */
+  $('introOv').classList.add('hidden');
+  TUT.on=true;TUT.step=0;
+  $('tutBanner').classList.remove('hidden');
+  save();render();
+}
+function tutEnd(){
+  TUT.on=false;
+  $('tutBanner').classList.add('hidden');
+  tutClearGlow();
+  render();
+}
+$('tutBtn').onclick=tutStart;
+$('tutHelp').onclick=tutStart;
+$('tutNext').onclick=()=>{if(TUT.step<TSTEPS.length-1)TUT.step++;render()};
+$('tutDone').onclick=tutEnd;
 
 /* ============ boot ============ */
 S=freshState();

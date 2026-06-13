@@ -228,16 +228,43 @@ button.danger{border-color:#6B3A33;color:var(--heat)}
 .legend{display:grid;grid-template-columns:auto 1fr;gap:5px 10px;font-size:11px;margin:10px 0;color:var(--dim)}
 .legend .ic{text-align:center;color:var(--chalk)}
 .legend b{color:var(--ink)}
+/* ============ tutorial coach (prussian/flux) ============ */
+#tutBanner{
+  position:sticky;top:0;z-index:40;
+  margin:0 0 2px;border:1px solid #8A6230;border-left:3px solid var(--flux);
+  background:linear-gradient(180deg,#1A2535,#13202F);border-radius:0 0 6px 6px;
+  padding:9px 12px;font-size:12px;line-height:1.5;color:var(--ink);
+  display:flex;justify-content:space-between;gap:10px;align-items:center;
+  box-shadow:0 6px 14px rgba(8,12,17,.55);
+}
+#tutBanner.hidden{display:none}
+#tutBanner b{color:var(--flux)}
+#tutBanner .tn{color:var(--work)}
+#tutBanner .tw{color:var(--heat)}
+#tutBanner .trow{display:flex;gap:6px;flex-shrink:0;align-items:center}
+#tutStepLbl{font-size:9px;letter-spacing:.16em;color:var(--dim);min-width:30px;text-align:right}
+.tut-glow{box-shadow:0 0 0 2px var(--flux),0 0 16px rgba(255,179,71,.4)!important;border-radius:6px;position:relative;z-index:1}
+svg .tut-glow,.sock.tut-glow .shape{filter:drop-shadow(0 0 7px rgba(255,179,71,.95)) drop-shadow(0 0 3px rgba(255,179,71,.9))!important}
 @media (prefers-reduced-motion: reduce){.gbar i,.cmpbar i,.gbar .gh{transition:none}}
 </style>
 </head>
 <body>
+
+<div id="tutBanner" class="hidden">
+  <span id="tutText"></span>
+  <span class="trow">
+    <span id="tutStepLbl"></span>
+    <button class="small" id="tutNext" style="display:none">NEXT</button>
+    <button class="small" id="tutSkip">SKIP</button>
+  </span>
+</div>
 
 <header>
   <div class="brand">
     <h1>CORE<span>WORKS</span></h1>
     <div style="display:flex;align-items:center;gap:8px">
       <div class="bptag" id="dayTag"></div>
+      <button class="small" id="helpTop">❔ HELP</button>
       <button class="small" id="shareTop">SHARE</button>
     </div>
   </div>
@@ -477,7 +504,7 @@ button.danger{border-color:#6B3A33;color:var(--heat)}
     <button class="modecard sel" data-m="ASSISTED"><span class="mn">ASSISTED <span>×1.0</span></span><div class="md">Live per-stage readouts, ghost vim, bottleneck chip, failure forecasts.</div></button>
     <button class="modecard" data-m="STANDARD"><span class="mn">STANDARD <span>×1.25</span></span><div class="md">Ghost vim total + dial position only. Stage readouts dark.</div></button>
     <button class="modecard" data-m="MANUAL"><span class="mn">MANUAL <span>×1.5</span></span><div class="md">Nothing until BENCH PULL. Buy Sight Glasses ($3, G-01/G-02) to relight one stage each.</div></button>
-    <div class="btnrow"><button id="startBtn">TO THE BENCH</button></div>
+    <div class="btnrow"><button id="tutBtn">TUTORIAL</button><button id="startBtn">TO THE BENCH</button></div>
   </div>
 </div>
 
@@ -912,8 +939,9 @@ function render(){
   }else chip.style.display='none';
   /* drawers */
   renderInv();renderShop();renderRewards();renderInfo(r);
-  $('pullBtn').disabled=S.running||!c;
+  $('pullBtn').disabled=S.running||!c||(window.TUT&&TUT.on&&TUT.step<TUT_PULL_STEP);
   $('rerollBtn').disabled=S.money<2||S.running;
+  if(window.tutTick)tutTick();
 }
 function renderCurve(r,v,res){
   const g=$('curveG');if(!g)return;
@@ -1186,7 +1214,8 @@ async function benchPull(){
   }
   S.running=false;
   save();
-  try{EWL.submitScore({score:S.raw,round:S.contractsDone+1,mode:settings.mode})}catch(e){}
+  /* tutorial drives the live machine; never submit a coached pull to the leaderboard */
+  if(!(window.TUT&&TUT.on))try{EWL.submitScore({score:S.raw,round:S.contractsDone+1,mode:settings.mode})}catch(e){}
   $('resBody').innerHTML=body;
   $('resOv').classList.remove('hidden');
   render();
@@ -1213,6 +1242,7 @@ $('scrapBtn').onclick=()=>{
   if(S.running)return;
   showConfirm('SCRAP THIS MACHINE?','Wipes the machine, parts, credits, contracts and move log for today\'s seed. This cannot be undone.','SCRAP IT',()=>{
     try{localStorage.removeItem(saveKey)}catch(e){}
+    tutEnd();
     fresh();render();
     $('introOv').classList.remove('hidden');
   },true);
@@ -1227,6 +1257,143 @@ $('shareTop').onclick=()=>{
   $('shareTop').textContent='COPIED ✓';
   setTimeout(()=>$('shareTop').textContent='SHARE',1400);
 };
+
+/* ============ tutorial — robust interactive coach (12-step state machine) ============ */
+/* Teaches COREWORKS one concept at a time, on the LIVE machine. ACTION steps are GATED:
+   advance only when the player performs the action, verified against real game state, with a
+   gentle correction line when wrong. Never consumes rng; never submits a coached pull
+   (suppressed in benchPull); never corrupts the save schema; clears all glow on exit. */
+window.TUT={on:false,step:0,primed:-1,shown:-1,prevMode:undefined};
+function cvDef(){return S.inst.s04?CAT[S.inst.s04.id]:null}
+function tutPicked(){return S.picked!=null}
+function tutDialInBand(){const cv=cvDef();return !!cv&&S.f>=cv.a&&S.f<=cv.b}
+function tutInspecting(k){return !!(S.sel&&S.sel.type==='sock'&&S.sel.k===k)}
+const TSTEPS=[
+  /* PHASE 1 — the goal, the contract, the commit, the gauges */
+  {t:()=>'Welcome to the bench, operator. The whole game is one job: <b>fulfil a CONTRACT</b> — deliver enough <b class="tn">vim</b> (work) from a machine that turns flux into output. Three offers sit on the <b>CONTRACT BOARD</b> up top.',
+   hi:'#board'},
+  {t:()=>tutPicked()
+     ?'Signed. Each offer demands a <b>vim target</b>, a <b>heat cap</b>, and sometimes a special <b>clause</b>; it pays on delivery. The board is seeded — everyone gets the same three today.'
+     :'<b>Pick a contract.</b> Tap any of the three offers on the board to sign it — the bench only pulls against a signed contract.',
+   gate:tutPicked,
+   bad:()=>'Tap one of the three cards on the CONTRACT BOARD to sign it.',
+   hi:'#board'},
+  {t:()=>'Watch these three <b>gauges</b>: <b class="tn">OUTPUT</b> (the vim you make), <b class="tw">HEAT</b> (must stay under the cap), <b>STABILITY</b> (margin before the machine shudders). They are how you read every run.',
+   hi:'#bench'},
+  {t:()=>'When the build looks right you commit with <b>BENCH PULL</b> — the big amber button. It fires the machine once and resolves the contract. (It stays locked until this tour ends, so explore freely.)',
+   hi:'#pullBtn'},
+  /* PHASE 2 — machine anatomy */
+  {t:()=>'Now the machine. Flux flows top-to-bottom through four stages: <b>INTAKE → CHARGE → RESONANCE → CONVERSION</b>, with REGULATION (heat) off to the side. Your starter parts are already socketed in each stage.',
+   hi:'#machineWrap'},
+  {t:()=>tutInspecting('s04')
+     ?'That is the <b>Converter S-04</b>. Its <b class="tn">BAND</b> (here '+(cvDef()?cvDef().a+'–'+cvDef().b+' Hz':'38–55 Hz')+') is the heart of the game — read the next step carefully.'
+     :'Tap the <b>Converter</b> socket — the wide bin at the bottom (CONVERSION). Its readout names a frequency <b class="tn">BAND</b>. <b>Tap it now.</b>',
+   gate:()=>tutInspecting('s04'),
+   bad:()=>'Tap the wide CONVERTER bin at the bottom of the schematic (stage CONVERSION, code S-04).',
+   hi:'#sk_s04'},
+  /* PHASE 3 — THE central skill: match the dial to the converter band */
+  {t:()=>tutDialInBand()
+     ?'<b class="tn">That is the whole game.</b> Inside the band the converter pays full rate and vim jumps; drift outside and output collapses. The green shaded box on the bench curve IS the band — keep the dot in it.'
+     :'<b>THE core skill:</b> drag the <b>FREQ DIAL</b> until it lands inside the converter band ('+(cvDef()?cvDef().a+'–'+cvDef().b+' Hz':'38–55 Hz')+'). Watch OUTPUT jump as you enter it. <b>Drag it into the band now.</b>',
+   gate:tutDialInBand,
+   bad:()=>'Slide the FREQ DIAL into the shaded band on the curve ('+(cvDef()?cvDef().a+'–'+cvDef().b+' Hz':'38–55 Hz')+'). Right now you are outside it — vim is throttled.',
+   prime:()=>{ /* nudge the dial OUT of band so the drag is meaningful (no rng, legal state) */
+     const cv=cvDef(),res=S.inst.s03?CAT[S.inst.s03.id]:null;
+     if(cv&&res){const below=cv.a-8;S.f=Math.max(res.lo,Math.min(res.hi,below));S.last=null}
+   },
+   hi:'#bench'},
+  /* PHASE 4 — each mechanic, one at a time */
+  {t:()=>'Parts are how you reshape the curve. <b>Coils</b> (CHARGE) add <b>pressure</b> — more vim — but each one pours <b class="tw">heat</b>. The two round sockets beside the chamber take them.',
+   hi:'#sk_c1'},
+  {t:()=>'The <b>Sink R-01</b> sheds heat; if heat beats its capacity the whole machine throttles. <b>Forks</b> (S-03f) and the <b>Governor R-02</b> buy <b>stability margin</b> so you can run nearer the redline without a shudder.',
+   hi:'#sk_r01'},
+  {t:()=>'Upgrades come in <b>Mk I/II/III</b>. Higher tiers shift the <b class="tn">optimal frequency upward</b> — a fast resonator with a low converter band overshoots and chokes. Matching tiers across stages is where the engineering lives.',
+   hi:'#machineWrap'},
+  /* PHASE 5 — the four failure modes + bottleneck */
+  {t:()=>'Four named failures. <b class="tw">STARVED</b>: the chamber is underfed — add or upgrade <b>vanes</b>. <b class="tw">CHOKED</b>: charge overflows the converter cap — bigger converter or less pressure.',
+   hi:'#flags'},
+  {t:()=>'<b class="tw">OVERHEAT</b>: heat beats the sink and throttles output — add sink or drop coils. <b class="tw">SHUDDER</b>: past the redline or margin &lt; 0, output ×0.45 — add forks/governor or back off the dial. The bench lists them worst-first.',
+   hi:'#flags'},
+  {t:()=>'When one stage is holding you back, the <b>BOTTLENECK</b> chip names it — it is the stage whose fix gains the most vim. Read the chip, then add exactly the part it points at. Do not over-build the rest.',
+   hi:'#chip'},
+  /* PHASE 6 — modes + economy */
+  {t:()=>'This tour runs in <b>ASSISTED</b> (everything shown). <b>STANDARD</b> hides the per-stage readouts; <b>MANUAL</b> shows nothing until you pull — there you buy <b>Sight Glasses ($3)</b> to relight one stage each. Higher modes pay a bigger multiplier.',
+   hi:'#modeBadge'},
+  {t:()=>'Economy in one line: a fulfilled contract <b class="tn">pays</b> (more for surplus, interest and streak) and advances the campaign toward Mk II / Mk III. Miss it and the machine <b class="tw">STALLS</b> — no pay, a $2 subsidy, streak reset, and the contract returns to the board. There is always a way forward.',
+   hi:null},
+  /* PHASE 7 — concrete first-contract strategy + sign-off */
+  {t:()=>'<b>Your first contract, step by step:</b> 1) drag the dial into the converter band. 2) read the <b>BOTTLENECK</b> chip and the failure flags. 3) buy and install the one part they name (usually a vane for STARVED, a coil for low output, a sink for heat). 4) re-check the gauges, then <b>BENCH PULL</b>. That loop wins every contract. Good luck, operator.',
+   hi:null,final:true},
+];
+const TUT_PULL_STEP=TSTEPS.length-1;   /* BENCH PULL unlocks only on the final sign-off step */
+function tutClearGlow(){document.querySelectorAll('.tut-glow').forEach(e=>e.classList.remove('tut-glow'))}
+function tutEnd(){
+  TUT.on=false;TUT.step=0;TUT.primed=-1;TUT.shown=-1;
+  /* restore the player's locked mode if HELP temporarily forced ASSISTED mid-run */
+  if(TUT.prevMode!==undefined){settings.mode=TUT.prevMode;TUT.prevMode=undefined;save()}
+  $('tutBanner').classList.add('hidden');
+  tutClearGlow();
+}
+let _tutDeferred=false;
+function tutPrimeStep(){ /* run a step's one-time prime; returns true if it fired */
+  if(TUT.primed===TUT.step)return false;
+  TUT.primed=TUT.step;
+  if(TSTEPS[TUT.step].prime){TSTEPS[TUT.step].prime();return true}
+  return false;
+}
+window.tutTick=function(){
+  if(!TUT.on)return;
+  tutClearGlow();
+  /* Prime the current step once on first entry (e.g. nudge dial OUT of band) BEFORE its gate is
+     tested, so a practice step is never auto-skipped just because the world already satisfied it. */
+  let primed=tutPrimeStep();
+  /* auto-advance only past gated steps with no practice priming that are already satisfied
+     (e.g. a contract signed before the tour reached that step). */
+  let guard=0;
+  while(TUT.step<TSTEPS.length-1){
+    const s=TSTEPS[TUT.step];
+    if(!(s.gate&&!s.prime&&s.gate())||guard++>TSTEPS.length)break;
+    TUT.step++;
+    if(tutPrimeStep())primed=true;
+  }
+  const st=TSTEPS[TUT.step];
+  $('tutStepLbl').textContent=(TUT.step+1)+'/'+TSTEPS.length;
+  const gated=!!st.gate,satisfied=gated?st.gate():true;
+  /* gentle correction: once a gated step has been shown and the player acted but is still wrong,
+     append the step's bad() hint in the warning colour */
+  let html=st.t();
+  if(gated&&!satisfied&&st.bad&&TUT.shown===TUT.step)html+=' <span class="tw">↳ '+st.bad()+'</span>';
+  TUT.shown=TUT.step;
+  $('tutText').innerHTML=html;
+  /* NEXT shows on text steps that are satisfied; gated steps hide it until the action is done */
+  $('tutNext').style.display=(!st.final&&satisfied)?'':'none';
+  $('tutSkip').textContent=st.final?'DONE':'SKIP';
+  if(st.hi){const el=document.querySelector(st.hi);if(el)el.classList.add('tut-glow')}
+  /* a prime mutated machine state mid-render; repaint once (guarded, non-recursive) so gauges
+     and the curve reflect the primed dial immediately */
+  if(primed&&!_tutDeferred){_tutDeferred=true;setTimeout(()=>{_tutDeferred=false;if(TUT.on)render()},0)}
+};
+function tutStart(){
+  /* if a run is already underway in a non-ASSISTED mode, remember it and restore on exit so
+     replaying HELP never silently changes the player's locked mode / score multiplier */
+  TUT.prevMode=(settings.mode&&settings.mode!=='ASSISTED')?settings.mode:undefined;
+  settings.mode='ASSISTED';                 /* the tutorial teaches with full instrumentation */
+  $('introOv').classList.add('hidden');
+  TUT.on=true;TUT.step=0;TUT.primed=-1;TUT.shown=-1;
+  $('tutBanner').classList.remove('hidden');
+  /* ensure a board + shop exist so the player can sign a contract; same draws as a normal start */
+  if(!S.board||!S.board.length){rollBoard();rollShop()}
+  save();render();
+}
+$('tutBtn').onclick=tutStart;
+$('helpTop').onclick=()=>{ if(!S.running)tutStart() };
+$('tutNext').onclick=()=>{
+  const st=TSTEPS[TUT.step];
+  if(st.gate&&!st.gate())return;            /* never skip an unfinished gate via NEXT */
+  if(TUT.step<TSTEPS.length-1){TUT.step++;TUT.primed=-1}
+  render();
+};
+$('tutSkip').onclick=()=>{ tutEnd();render() };
 
 /* ============ intro / mode picker (Bible §2) ============ */
 let pickMode='ASSISTED';

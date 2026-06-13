@@ -171,6 +171,16 @@ button.danger{border-color:#6B3A33;color:var(--red)}
 .cdxe.unk b{color:var(--iron-dim)}
 .cdxe.fresh{border-color:var(--ember-dim)}
 .cdxe.fresh b{color:var(--ember)}
+/* tutorial coach (cloned from DYNAMO, recolored to the ember/iron palette) */
+#tutBanner{margin:10px 14px 0;border:1px solid var(--ember-dim);border-left:3px solid var(--ember);background:#231910;border-radius:5px;padding:9px 11px;font-size:12px;line-height:1.5;color:var(--ink);display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+#tutBanner.hidden{display:none}
+#tutBanner b{color:var(--ember)}
+#tutBanner .tutmsg{flex:1}
+#tutBanner .tutbtns{display:flex;flex-direction:column;gap:5px;flex-shrink:0}
+#tutBanner .tutbtns button{padding:5px 9px;font-size:10px;min-width:62px}
+#tutBanner .tutcorr{color:var(--red);display:block;margin-top:4px;font-size:11px}
+.tut-glow{box-shadow:0 0 0 2px var(--ember),0 0 16px rgba(255,138,61,.4)!important;border-radius:6px;position:relative;z-index:1}
+#helpBtn{border-color:var(--ember-dim);color:var(--ember)}
 </style>
 </head>
 <body>
@@ -180,6 +190,7 @@ button.danger{border-color:#6B3A33;color:var(--red)}
     <h1>FOUND<span>RY</span></h1>
     <div style="display:flex;align-items:center;gap:8px">
       <div class="daytag" id="dayTag"></div>
+      <button class="small" id="helpBtn">❔ HELP</button>
       <button class="small" id="shareTop">SHARE</button>
     </div>
   </div>
@@ -195,6 +206,8 @@ button.danger{border-color:#6B3A33;color:var(--red)}
   </div>
   <div class="contractStrip" id="activeStrip">No contract picked — choose one from the board below.</div>
 </header>
+
+<div id="tutBanner" class="hidden"><span class="tutmsg" id="tutText"></span><span class="tutbtns"><button class="small" id="tutNext">NEXT</button><button class="small" id="tutSkip">SKIP</button></span></div>
 
 <main>
   <div class="sect-lbl"><span>Process Pipeline</span><button class="small" id="codexBtn">CODEX</button></div>
@@ -292,7 +305,7 @@ button.danger{border-color:#6B3A33;color:var(--red)}
     <button class="modecard sel" data-m="ASSISTED"><span class="mn">ASSISTED <span>×1.0</span></span><div class="md">All five projected stat bars vs contract bands, live, plus failure warnings.</div></button>
     <button class="modecard" data-m="STANDARD"><span class="mn">STANDARD <span>×1.25</span></span><div class="md">Projected bars only for stats whose chemistry you've documented in the Codex. Knowledge is instrumentation.</div></button>
     <button class="modecard" data-m="MANUAL"><span class="mn">MANUAL <span>×1.5</span></span><div class="md">Nothing live. An Assay Kit ($6, consumable) previews one chosen stat for one pour.</div></button>
-    <div class="btnrow"><button id="startBtn">LIGHT THE CRUCIBLE</button></div>
+    <div class="btnrow"><button id="tutBtn">TUTORIAL</button><button id="startBtn">LIGHT THE CRUCIBLE</button></div>
   </div>
 </div>
 
@@ -666,6 +679,7 @@ function setRatio(ore,val){
   for(let i=0;i<ord.length&&left>0;i++){fl[ord[i][1]]++;left--}
   S.ratios[ore]=val;
   others.forEach((o,i)=>S.ratios[o]=fl[i]*5);
+  if(window.TUT&&TUT.on)TUT.movedHop=true;
   render();
 }
 function unitsFor(c,ratios){
@@ -845,10 +859,12 @@ function render(){
   /* founders' relief (Doctrine #3): broke + empty stockpile → $2 at a time */
   const totInv=ORES.reduce((a,o)=>a+(P.inventory[o]||0),0);
   $('reliefBtn').style.display=(settings.mode&&P.bank<ENTRYCAP&&totInv===0)?'':'none';
-  /* pour button */
+  /* pour button — also gated by the tutorial until the POUR step is reached */
   const chk=canPour();
-  $('pourBtn').disabled=S.pouring||!chk.ok;
-  if(!chk.ok&&settings.mode&&!S.pouring)setInfo('<span class="code">PRE-POUR CHECK</span><br>'+chk.why);
+  const tutGate=window.TUT&&TUT.on&&!tutPourAllowed();
+  $('pourBtn').disabled=S.pouring||!chk.ok||tutGate;
+  if(!chk.ok&&settings.mode&&!S.pouring&&!tutGate)setInfo('<span class="code">PRE-POUR CHECK</span><br>'+chk.why);
+  if(window.tutTick)tutTick();
 }
 function setInfo(html){$('info').innerHTML=html}
 
@@ -858,6 +874,7 @@ function buyOre(o,n){
   if(P.bank<cost||S.pouring)return;
   P.bank=r2(P.bank-cost);
   P.inventory[o]=(P.inventory[o]||0)+n;
+  if(window.TUT&&TUT.on)TUT.bought=true;
   logMove({t:'buy',ore:o,units:n,price:S.market[o]});
   savePersist();save();render();
 }
@@ -899,10 +916,10 @@ $('relistBtn').onclick=()=>{
   S.board=ensureEntry(S.board.map(()=>genContract(rng,S.market)),S.market);
   savePersist();save();render();
 };
-$('tempDial').oninput=function(){S.temp=Number(this.value);render()};
+$('tempDial').oninput=function(){S.temp=Number(this.value);if(window.TUT&&TUT.on)TUT.movedTemp=true;render()};
 (function(){
   const qs=$('qseg');
-  if(qs.children)for(const b of qs.children)b.onclick=()=>{S.quench=b.dataset.q;render()};
+  if(qs.children)for(const b of qs.children)b.onclick=()=>{S.quench=b.dataset.q;if(window.TUT&&TUT.on)TUT.movedQuench=true;render()};
 })();
 
 /* stage taps → info */
@@ -1008,8 +1025,11 @@ async function doPour(){
   S.assayStat=null; /* the kit is consumed by the pour */
   S.round+=1;
   S.pouring=false;
+  if(window.TUT&&TUT.on)TUT.didPour=true; /* mark the guided pour for the tutorial gate */
   savePersist();save();
-  if(window.EWL&&EWL.submitScore){
+  /* a tutorial-driven pour is real (genuine codex/bank), but it must not post a
+     ranked score mid-coaching — suppress the leaderboard submit while TUT is on */
+  if(window.EWL&&EWL.submitScore&&!(window.TUT&&TUT.on)){
     try{EWL.submitScore({score:S.raw,round:S.contractsDone+1,mode:settings.mode})}catch(e){}
   }
   $('resTitle').innerHTML=title;
@@ -1051,6 +1071,7 @@ $('scrapBtn').onclick=()=>{
   if(S.pouring)return;
   showConfirm('COLD RESTART?','Wipes today\'s board, recipe, score and move log for this seed. Your <b>bank, ore stockpile and Codex survive</b> — they are the career layer.','RESTART DAY',()=>{
     try{localStorage.removeItem(saveKey)}catch(e){}
+    if(window.TUT){TUT.on=false;$('tutBanner').classList.add('hidden');tutGlowClear();}
     fresh();render();
     $('introOv').classList.remove('hidden');
   },true);
@@ -1066,6 +1087,131 @@ $('shareTop').onclick=()=>{
   setTimeout(()=>$('shareTop').textContent='SHARE',1400);
 };
 
+/* ============ TUTORIAL — interactive coach (pattern cloned from DYNAMO) ============
+   FOUNDRY is non-spatial and knowledge-driven, so the coach teaches the discovery
+   loop one concept at a time. ACTION steps are GATED on real game state / genuine
+   interaction; text steps advance with NEXT. The tutorial NEVER consumes the seeded
+   rng stream, never awards money, never flips a Codex flag itself, and suppresses
+   the leaderboard submit for the one guided POUR (which is otherwise a real pour). */
+window.TUT={on:false,step:0,_last:-1,
+  bought:false,movedHop:false,movedTemp:false,movedQuench:false,didPour:false};
+function tutPourAllowed(){
+  /* POUR is locked until the player reaches the guided-pour step (S14) */
+  return !(window.TUT&&TUT.on)||TUT.step>=13;
+}
+function cdxCountNow(){return CODEX.filter(e=>P.codex[e.k]).length}
+/* Each step: t() banner text · hi CSS selector to glow · done() gate (action) or
+   null (text/NEXT) · corr() optional correction line · enter() resets its gate ·
+   final marks the sign-off. */
+const TSTEPS=[
+  /* ---- phase 1: the goal, a contract, the commit, the bench ---- */
+  {t:()=>'Welcome to the crucible. Your job each day: fill a <b>CONTRACT</b> — pour an ingot whose five stats all land <b>inside its spec bands</b>. The board below holds three; you pick one.',
+   hi:'#board'},
+  {t:()=>'Tap <b>PICK</b> on any contract to take it on. (You can relist the board for $2 later — for now just grab one.)',
+   hi:'#board',done:()=>!!S.active,
+   corr:()=>'Pick one with the <b>PICK</b> button on a card.'},
+  {t:()=>'That contract is now <b>ACTIVE</b> (top strip). Its spec bands are what the <b>TEST BENCH</b> judges your ingot against after you commit with <b>POUR</b>. Miss any band and the pour is named and stalls.',
+   hi:'#activeStrip'},
+  /* ---- phase 2: the pipeline + the controls ---- */
+  {t:()=>'Everything flows through one pipeline: <b>HOPPERS → SMELTER → MIX → QUENCH → CAST → TEST</b>. Tap any stage to read it. The hoppers, one temperature dial and one quench setting are your whole control surface.',
+   hi:'#pipeWrap'},
+  {t:()=>'First you need metal. The <b>ore market</b> drifts daily ±40%. Buy a little <b>FERRIT</b> — the cheap, hard workhorse (▲▼ shows today\'s drift). Tap a <b>+1</b> or <b>+5</b>.',
+   hi:'#market',done:()=>TUT.bought,enter:()=>{TUT.bought=false},
+   corr:()=>'Tap <b>+1</b> under an ore to buy a unit into your stockpile.'},
+  {t:()=>'Now the recipe. The <b>HOPPERS</b> set the ore ratio (always sums to 100%). Drag any hopper slider to change the mix.',
+   hi:'#hoppers',done:()=>TUT.movedHop,enter:()=>{TUT.movedHop=false},
+   corr:()=>'Drag one of the ore sliders in the hoppers.'},
+  {t:()=>'Set the <b>SMELTER</b> temperature with its dial — heat decides how well each ore fuses (and more).',
+   hi:'#dials',done:()=>TUT.movedTemp,enter:()=>{TUT.movedTemp=false},
+   corr:()=>'Drag the Smelter dial to change the temperature.'},
+  {t:()=>'Pick a <b>QUENCH</b> rate — <b>SLOW · NORM · FAST</b>. Cooling rate trades hardness against flex. Tap one.',
+   hi:'#dials',done:()=>TUT.movedQuench,enter:()=>{TUT.movedQuench=false},
+   corr:()=>'Tap SLOW, NORM or FAST in the quench segment.'},
+  /* ---- phase 3: each mechanic, one at a time, plain examples ---- */
+  {t:()=>'<b>Base stats</b> are the ratio-weighted blend of the ores: each stat = Σ (ore share × that ore\'s stat). 60% FERRIT (HARD 80) + 40% AURELIN (HARD 55) ⇒ HARDNESS 70. The <b>Projected Assay</b> bars show the result.',
+   hi:'#bars'},
+  {t:()=>'Every ore has an ideal <b>TEMP WINDOW</b>. Pour it outside that window and it fuses poorly — it contributes only <b>60%</b> of its stats. FERRIT is forgiving (820–1250°); VEX is fussy (1000–1200°).',
+   hi:'#dials'},
+  {t:()=>'<b>QUENCH trade:</b> <b>FAST</b> → +20% hardness, −25% flex (snappy but stiff). <b>SLOW</b> → +20% flex, −15% hardness (springy but soft). NORM is neutral. This is the classic contradiction behind tough-AND-flexible contracts.',
+   hi:'#dials'},
+  {t:()=>'The five ore personalities: <b>FERRIT</b> hard & heavy · <b>LUMEN</b> shimmer + flex but <b>burns hot</b> · <b>DROSS</b> dirt-cheap filler that drags purity · <b>VEX</b> wild flex but <b>unstable</b> in quantity · <b>AURELIN</b> premium all-rounder & <b>stabilizer</b>.',
+   hi:'#market'},
+  /* ---- phase 4: THE SIGNATURE MECHANIC — the Codex + a discovering pour ---- */
+  {t:()=>'Here\'s the heart of FOUNDRY: the <b>Materials Codex</b>. Every chemistry rule starts as a <b>"?"</b> — undocumented — and is written down <b>permanently</b> the first time one of your pours exhibits it. Knowledge is the progression.',
+   hi:'#codexBtn'},
+  {t:()=>'Let\'s discover some. Make sure your recipe is pourable (enough ore for the contract\'s units), then hit <b>POUR</b>. Whatever ores and settings you used will be <b>documented in the Codex</b>.'+
+        (canPour().ok?'':'<span class="tutcorr">'+canPour().why.replace(/<\/?b>/g,'')+'</span>'),
+   hi:'#pourBtn',done:()=>TUT.didPour,enter:()=>{TUT.didPour=false},
+   corr:()=>'POUR is locked until the recipe is valid — buy enough of the ores your ratio needs, then press POUR.'},
+  {t:()=>'Poured! Open the <b>CODEX</b> (top-right of the pipeline) — the rules your pour exhibited are now in plain language. In <b>STANDARD</b> mode, only stats whose chemistry you\'ve documented get live projection bars: your Codex literally <b>is your instrument panel</b>.',
+   hi:'#codexBtn'},
+  /* ---- phase 5: failure modes by name, with fixes ---- */
+  {t:()=>'Failures are named so you can fix them. <b>SLAG</b> — a cold pour below 900° entrains slag, purity −15 (raise the temp, or cut DROSS). <b>SCORCH</b> — LUMEN above 1100° burns its shimmer to zero (cool it below 1100°).',
+   hi:'#dials'},
+  {t:()=>'<b>BRITTLE</b> — a FAST-quenched ingot with final flex below 15 shatters on the bench (slow the quench or add flex). <b>UNSTABLE</b> — VEX over 25% with less than 10% AURELIN boils out of the mold (add AURELIN or cut VEX). <b>OFF-SPEC</b> — names the exact stat band you missed.',
+   hi:'#bars'},
+  /* ---- phase 6: operator modes + economy ---- */
+  {t:()=>'Operator <b>MODES</b> (badge, top-right) set your instrumentation & score multiplier: <b>ASSISTED ×1.0</b> shows all bars + warnings · <b>STANDARD ×1.25</b> shows only Codex-documented stats · <b>MANUAL ×1.5</b> shows nothing live (a $6 <b>Assay Kit</b> previews one stat for one pour).',
+   hi:'#modeBadge'},
+  {t:()=>'<b>Economy:</b> a filled contract pays into your <b>bank</b> (plus surplus, interest & streak bonuses). The ore market <b>drifts daily</b> — stockpile on cheap days. Bank, stockpile and Codex are your career layer and <b>survive across days</b>.',
+   hi:'#market'},
+  /* ---- phase 7: a concrete first-contract strategy + sign-off ---- */
+  {t:()=>'A solid first move: take a single-band hardness job like <b>RAIL SPIKES</b> (HARD ≥ 45). Buy FERRIT, run it ~<b>1000°</b> on <b>NORM</b> or <b>FAST</b> for the hardness kick, keep the ratio near 100% FERRIT, and POUR. Cheap, forgiving, and it banks a Codex entry.',
+   hi:'#board'},
+  {t:()=>'That\'s the whole loop: <b>pick → buy → mix → dial → POUR → learn</b>. The chemistry never lies; your Codex remembers everything you prove. Light the crucible — and good pouring, smith.',
+   hi:null,final:true},
+];
+function tutGlowClear(){try{document.querySelectorAll('.tut-glow').forEach(e=>e.classList.remove('tut-glow'))}catch(e){}}
+window.tutTick=function(){
+  if(!TUT.on)return;
+  tutGlowClear();
+  /* auto-advance through any satisfied action gates (text steps have done=null) */
+  while(TUT.step<TSTEPS.length-1&&TSTEPS[TUT.step].done&&TSTEPS[TUT.step].done())TUT.step++;
+  /* on entering a (new) step, run its enter() once to arm its gate, clear any nudge */
+  if(TUT.step!==TUT._last){
+    TUT._last=TUT.step;
+    TUT._nudge=false;
+    const s=TSTEPS[TUT.step];
+    if(s.enter)try{s.enter()}catch(e){}
+  }
+  const st=TSTEPS[TUT.step];
+  let msg='<b>('+(TUT.step+1)+'/'+TSTEPS.length+')</b> '+st.t();
+  /* gentle correction if the player did something off on an action step */
+  if(st.done&&!st.done()&&st.corr&&(TUT.step===TUT._last)&&TUT._nudge)msg+='<span class="tutcorr">'+st.corr()+'</span>';
+  $('tutText').innerHTML=msg;
+  const isAction=!!st.done;
+  const nx=$('tutNext'),sk=$('tutSkip');
+  if(st.final){nx.textContent='DONE';nx.style.display='';sk.style.display='none';}
+  else{nx.textContent='NEXT';nx.style.display=isAction?'none':'';sk.style.display='';sk.textContent='SKIP';}
+  if(st.hi){try{const el=document.querySelector(st.hi);if(el)el.classList.add('tut-glow')}catch(e){}}
+};
+function startTutorial(){
+  /* teach with full instrumentation; does NOT touch the rng stream or persist money */
+  settings.mode=settings.mode||'ASSISTED';
+  $('introOv').classList.add('hidden');
+  TUT.on=true;TUT.step=0;TUT._last=-1;TUT._nudge=false;
+  TUT.bought=TUT.movedHop=TUT.movedTemp=TUT.movedQuench=TUT.didPour=false;
+  $('tutBanner').classList.remove('hidden');
+  save();render();
+}
+function endTutorial(){
+  TUT.on=false;
+  $('tutBanner').classList.add('hidden');
+  tutGlowClear();
+  render();
+}
+$('tutBtn').onclick=startTutorial;
+$('helpBtn').onclick=()=>{ if(TUT.on){endTutorial();return} startTutorial(); };
+$('tutNext').onclick=()=>{
+  const st=TSTEPS[TUT.step];
+  if(st.final){endTutorial();return}
+  if(st.done){TUT._nudge=true;render();return} /* action step: NEXT shouldn't skip the gate */
+  if(TUT.step<TSTEPS.length-1)TUT.step++;
+  TUT._nudge=false;
+  render();
+};
+$('tutSkip').onclick=endTutorial;
+
 /* ============ intro / mode picker (Bible §2: locked per run) ============ */
 let pickMode='ASSISTED';
 document.querySelectorAll('.modecard').forEach(el=>{
@@ -1076,6 +1222,7 @@ document.querySelectorAll('.modecard').forEach(el=>{
 });
 $('startBtn').onclick=()=>{
   settings.mode=pickMode;
+  if(window.TUT&&TUT.on){TUT.on=false;$('tutBanner').classList.add('hidden');tutGlowClear();}
   $('introOv').classList.add('hidden');
   save();render();
 };
@@ -1103,6 +1250,8 @@ window.__F={
   ensureEntry,ENTRYCAP,sellOre,relief,buyOre,pickContract,
   mulberry32,strSeed,savePersist,save,load,fresh,render,
   seedString,saveKey,persistKey,MULT,rank,
+  TSTEPS,tutTick,startTutorial,endTutorial,tutPourAllowed,
+  get TUT(){return TUT},
   get S(){return S},get P(){return P},get settings(){return settings},
 };
 </script>

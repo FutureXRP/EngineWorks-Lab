@@ -115,6 +115,17 @@ button.small{padding:5px 9px;font-size:10px}
 button.danger{border-color:#6B3A33;color:var(--red)}
 #runbar{position:sticky;bottom:0;padding:10px 14px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(180deg,transparent,#0A0D0D 30%);display:flex;gap:8px}
 #runBtn{flex:1;font-size:15px;padding:13px;letter-spacing:.25em;background:linear-gradient(180deg,#0F2A26,#0D1F1C);border:1px solid var(--teal-dim);color:var(--teal)}
+/* tutorial — teal/brass recolour of DYNAMO's coach banner */
+#tutBanner{margin:10px 14px 0;border:1px solid var(--teal-dim);border-left:3px solid var(--teal);background:#0E1B19;border-radius:5px;padding:9px 11px;font-size:12px;line-height:1.5;color:var(--ink);display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+#tutBanner.hidden{display:none}
+#tutBanner b{color:var(--teal)}
+#tutBanner i{color:var(--brass);font-style:normal}
+#tutText{flex:1}
+#tutBanner .tut-btns{display:flex;flex-direction:column;gap:5px;flex-shrink:0}
+#tutBanner .tut-btns button{padding:5px 10px;font-size:10px;min-width:62px}
+#tutBanner .tcorr{display:block;margin-top:4px;color:var(--red);font-size:11px}
+.tut-glow{box-shadow:0 0 0 2px var(--teal),0 0 16px rgba(90,191,176,.4)!important;border-radius:6px;position:relative;z-index:3}
+.tut-glow-brass{box-shadow:0 0 0 2px var(--brass),0 0 16px rgba(216,180,90,.4)!important;border-radius:6px;position:relative;z-index:3}
 .floater{position:absolute;left:50%;top:0;transform:translateX(-50%);font-family:var(--mono);font-weight:600;font-size:10px;pointer-events:none;animation:floatUp .9s ease-out forwards;white-space:nowrap;z-index:5}
 .floater.flow{color:var(--teal)}
 .floater.pts{color:var(--green)}
@@ -152,7 +163,10 @@ button.danger{border-color:#6B3A33;color:var(--red)}
 <header>
   <div class="brand">
     <h1>PIPE<span>WORKS</span></h1>
-    <div class="daytag" id="dayTag"></div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="daytag" id="dayTag"></div>
+      <button class="small" id="helpBtn">❔ HELP</button>
+    </div>
   </div>
   <div class="subrow">
     <div class="rank" id="rankLbl">Apprentice Fitter</div>
@@ -164,12 +178,21 @@ button.danger{border-color:#6B3A33;color:var(--red)}
     <div class="stat"><div class="lbl">Delivered</div><div class="val teal" id="stRun">0</div></div>
     <div class="stat"><div class="lbl">Score</div><div class="val green" id="stScore">0</div></div>
   </div>
-  <div class="gauge-wrap">
+  <div class="gauge-wrap" id="gaugeBox">
     <div class="gauge-row"><span>DEMAND <b id="quotaLbl">60</b>cr</span><span id="storedLbl"></span></div>
     <div class="gauge"><div class="ghost" id="gaugeGhost"></div><div class="fill" id="gaugeFill"></div><div class="ticks"></div></div>
     <div class="surge" id="surgeLbl"></div>
   </div>
 </header>
+
+<div id="tutBanner" class="hidden">
+  <span id="tutText"></span>
+  <span class="tut-btns">
+    <button class="small" id="tutNext" style="display:none">NEXT</button>
+    <button class="small" id="tutDone" style="display:none">DONE</button>
+    <button class="small" id="tutSkip">SKIP</button>
+  </span>
+</div>
 
 <main>
   <div class="sect-lbl"><span>Manifold Floor</span><span style="letter-spacing:.05em">tap part · tap again to rotate</span></div>
@@ -209,7 +232,7 @@ button.danger{border-color:#6B3A33;color:var(--red)}
     <button class="modecard sel" data-m="ASSISTED"><span class="mn">ASSISTED <span>×1.0</span></span><div class="md">Live projected bar / L/s at every part, red burst warnings.</div></button>
     <button class="modecard" data-m="STANDARD"><span class="mn">STANDARD <span>×1.25</span></span><div class="md">Projected tap total only — parts keep their secrets until the run.</div></button>
     <button class="modecard" data-m="MANUAL"><span class="mn">MANUAL <span>×1.5</span></span><div class="md">Nothing live. Buy Manometers ⌖ for point readouts, or do the arithmetic.</div></button>
-    <div class="btnrow"><button id="startBtn">TO THE MAINS</button></div>
+    <div class="btnrow"><button id="tutBtn">TUTORIAL</button><button id="startBtn">TO THE MAINS</button></div>
   </div>
 </div>
 
@@ -629,8 +652,9 @@ function render(){
     shopEl.appendChild(sc);
   });
   $('rerollBtn').disabled=S.money<2||S.running;
-  $('runBtn').disabled=S.running;
+  $('runBtn').disabled=S.running||(window.TUT&&TUT.on&&!TUT.ran&&TUT.step<TUT_RUNSTEP);
   renderInfo();
+  if(window.tutTick)tutTick();
 }
 function renderInfo(){
   const t=$('infoText'),a=$('infoAct');a.innerHTML='';
@@ -816,8 +840,10 @@ async function openMains(){
   await sleep(reduced?100:450);
   const r=resolveRun(f);
   S.running=false;
+  if(window.TUT&&TUT.on)TUT.ran=true;   /* mark the tutorial's guided run complete */
   save();
-  if(window.EWL&&EWL.submitScore){
+  /* suppress leaderboard submit while the tutorial is driving a guided OPEN MAINS */
+  if(window.EWL&&EWL.submitScore&&!(window.TUT&&TUT.on)){
     try{EWL.submitScore({score:S.raw,round:S.round,mode:settings.mode})}catch(e){}
   }
   showResults(f,r);
@@ -888,6 +914,7 @@ $('scrapBtn').onclick=()=>{
   showConfirm('SCRAP THIS NETWORK?','Wipes the grid, bench, credits and move log for this seed. The terminals reseed identically. This cannot be undone.','SCRAP IT',()=>{
     try{localStorage.removeItem(saveKey)}catch(e){}
     if(window.EWL)EWL.moveLog=[];
+    tutOff();
     fresh();render();
     $('introOv').classList.remove('hidden');
   },true);
@@ -906,6 +933,105 @@ $('startBtn').onclick=()=>{
   $('introOv').classList.add('hidden');
   rollShop();save();render();
 };
+
+/* ============ tutorial — very robust interactive coach ============
+   Mirrors DYNAMO's TUT/TSTEPS/#tutBanner/.tut-glow/tutTick pattern, recoloured to
+   pipeworks teal/brass. Guides on the LIVE seeded board. ACTION steps are gated and
+   verified against real sim() state; TEXT steps advance with NEXT. Seed-safe:
+   never calls rng(); the intro TUTORIAL button mirrors startBtn's single rollShop()
+   draw, the header HELP re-open touches no rng and never re-locks mode; openMains
+   suppresses the leaderboard submit while TUT.on. Leaves no stuck glow on exit. */
+window.TUT={on:false,step:0,ran:false};
+/* read-only predicates over real game state */
+function tutPipes(){return S.grid.reduce((a,p)=>a+(p&&PARTS[p.id]&&PARTS[p.id].cl==='pipe'?1:0),0)}
+function tutFedCount(){const f=sim();return f.tapRes.reduce((a,t)=>a+(t.flow>0?1:0),0)}
+const TSTEPS=[
+  /* ---- PHASE 1 · the goal & the fixed fixtures ---- */
+  {t:()=>'Welcome, fitter. Your job: route water across this <b>Manifold Floor</b> so the seeded <b>TAP</b> fixtures are satisfied. The grid is your canvas — build the network here.',
+   hi:'#grid',next:true},
+  {t:()=>'The endpoints are <i>fixed</i> and seeded — that\'s the puzzle. <b>PUMP ►</b> feeds from the left edge; each <b>TAP ◉</b> drinks on the right/bottom and prints its <b>need (≥L/s)</b> and <b>pressure band (lo–hi bar)</b>. You connect them.',
+   hi:'#grid',next:true},
+  {t:()=>'When the network is ready you commit with <b>OPEN MAINS</b>, and the <b>DEMAND gauge</b> up top fills with the credits your taps deliver. Beat the demand to get paid.',
+   hi:'#runBtn',next:true},
+  /* ---- PHASE 2 · hands-on core loop (GATED on flow reaching a tap) ---- */
+  {t:()=>tutPipes()>=2&&tutFedCount()===0
+     ?'<span class="tcorr">Almost — no tap is drinking yet. Water only crosses <b>mating ports</b> (the little tabs). Tap a placed pipe to <b>rotate</b> it until the tabs line up edge-to-edge, and make the line actually touch a TAP.</span>Lay a <b>mated pipe line</b> from the PUMP to any TAP.'
+     :'Hands on. From your bench, tap a <b>Copper Pipe ─</b>/<b>Elbow └</b>, then tap a grid cell to place it. Build a <i>mating</i> line out of the PUMP\'s inlet (left column) all the way to a TAP. Water flows only through tabs that meet; <b>tap a placed part again to rotate it</b>.',
+   done:()=>tutFedCount()>=1,hi:'#bench'},
+  /* ---- PHASE 3 · each mechanic, one at a time ---- */
+  {t:()=>'A tap is drinking — watch its readout. Notice the pressure: every part traversed costs <b>−0.5 bar of HEAD LOSS</b>, so the longer the run, the lower the bar arriving at the tap. Short lines keep pressure up.',
+   hi:'#grid',next:true},
+  {t:()=>'Every pipe has a <b>RATING</b>. <i>Copper ─└┬ = 8 bar</i> (cheap), <i>steel ═╚╦ = 16 bar</i> (boost-proof). Pressure ENTERING a part above its rating = <b>BURST</b>: that part is destroyed at run resolution and must be re-bought. Predictable, never random.',
+   hi:'#shop',next:true},
+  {t:()=>'The <b>Booster ▲</b> adds <b>+4.0 bar</b> ($1/round upkeep). That makes copper tempting AND doomed: <i>6 bar + 4 = 10 bar into 8-bar copper BURSTS it.</i> Boosted copper is a time bomb you chose — feed boost into steel, or reduce before the copper.',
+   hi:'#shop',next:true},
+  {t:()=>'Two shapers: the <b>Reducer ▽</b> drops <b>−3.0 bar</b> (tame a surge or a scald-y band), and the <b>Throttle ⊗</b> passes <b>25/50/75/100%</b> of flow — select it and tap its <b>FLOW</b> button to cycle. Use them to land a tap\'s exact band.',
+   hi:'#shop',next:true},
+  {t:()=>'A <b>Tee ┬╦</b> is a junction: it <b>splits FLOW evenly</b> among its live branches while <b>pressure carries through undivided</b>. One pump, two taps — split with a tee. Mind that each branch only gets its share of the litres.',
+   hi:'#shop',next:true},
+  {t:()=>'The <b>Accumulator ◎</b> banks up to <b>30 L/s</b> of flow that <i>overshot</i> its branch\'s tap need, then releases it into that same branch next round. It\'s your overshoot savings account.',
+   hi:'#shop',next:true},
+  {t:()=>'The <b>Manometer ⌖</b> is the gauge part: a no-op in the sim, but in <b>MANUAL</b> mode it prints live <b>bar · L/s</b> at its spot. In MANUAL you get no live readouts otherwise — place manometers, or do the arithmetic.',
+   hi:'#shop',next:true},
+  /* ---- PHASE 4 · the named failure vocabulary ---- */
+  {t:()=>'Know the failures by name. <b>BURST</b> = a part over its rating (names the part &amp; bar). At the tap: <b>SCALD</b> = pressure over the band (×0.2), <b>TRICKLE</b> = under the band (×0.2), <b>STARVED</b> = flow short of need (→0). <b>DEADHEAD</b> = flow that reaches no tap.',
+   hi:'#info',next:true},
+  {t:()=>'Fixes: BURST → use steel or drop pressure first. SCALD → add a Reducer/longer run. TRICKLE → shorten the line or add a Booster. STARVED → more flow (bigger pump, fewer splits, open the throttle). DEADHEAD → re-route the line into a tap.',
+   hi:'#info',next:true},
+  /* ---- PHASE 5 · boss rounds + modes/economy ---- */
+  {t:()=>'Every <b>5th round</b> is a <b>MAINS SURGE</b>: pump pressure jumps <b>+3 bar</b> for that round, announced <i>one round ahead</i> here. Copper that was fine will BURST — throttle/reduce it down, or upgrade to steel before the surge lands.',
+   hi:'#gaugeBox',next:true},
+  {t:()=>'<b>Modes</b> trade help for score: ASSISTED ×1.0 (live readouts), STANDARD ×1.25 (tap total only), MANUAL ×1.5 (manometers only) — locked per run, shown in the badge. <b>Economy:</b> meet demand to earn pay+interest+streak; miss it and you STALL ($2 subsidy, demand holds).',
+   hi:'#modeBadge',next:true},
+  /* ---- PHASE 6 · a concrete winning opening + the run ---- */
+  {t:()=>TUT.ran?'Mains opened — you saw the network resolve part by part. That\'s a delivery.'
+     :'Round 1 opening: build the <b>shortest mated line</b> from the pump into the <b>nearest tap</b> — straights and one elbow. Copper is fine at 6 bar (under its 8-bar rating); land the tap\'s band, then hit <b>OPEN MAINS</b>.',
+   done:()=>TUT.ran,hi:'#runBtn',runStep:true},
+  {t:()=>'That\'s the whole loop: <b>build → OPEN MAINS → buy → grow</b>. Demand climbs ~50% a round; keep your network ahead, mind the ratings, and watch for the surge. The floor is yours, fitter.',
+   final:true},
+];
+const TUT_RUNSTEP=(()=>{for(let i=0;i<TSTEPS.length;i++)if(TSTEPS[i].runStep)return i;return TSTEPS.length})();
+function tutClearGlow(){document.querySelectorAll('.tut-glow,.tut-glow-brass').forEach(e=>{e.classList.remove('tut-glow');e.classList.remove('tut-glow-brass')})}
+window.tutTick=function(){
+  if(!TUT.on)return;
+  tutClearGlow();
+  /* auto-advance through any satisfied ACTION steps */
+  while(TUT.step<TSTEPS.length-1&&TSTEPS[TUT.step].done&&TSTEPS[TUT.step].done())TUT.step++;
+  const st=TSTEPS[TUT.step];
+  $('tutText').innerHTML='<b>'+(TUT.step+1)+'/'+TSTEPS.length+'</b> · '+st.t();
+  /* NEXT for text steps, DONE on the final card, SKIP always until final */
+  $('tutNext').style.display=st.next?'':'none';
+  $('tutDone').style.display=st.final?'':'none';
+  $('tutSkip').style.display=st.final?'none':'';
+  if(st.hi){const el=document.querySelector(st.hi);if(el)el.classList.add(st.hi==='#gaugeBox'||st.hi==='#modeBadge'?'tut-glow-brass':'tut-glow')}
+};
+function tutStart(fromIntro){
+  /* fromIntro: fresh game on the intro screen → mirror startBtn exactly (one rollShop draw).
+     re-open (HELP): game already live → touch no rng, never re-lock the mode. */
+  TUT.on=true;TUT.step=0;TUT.ran=false;
+  $('tutBanner').classList.remove('hidden');
+  if(fromIntro){
+    settings.mode='ASSISTED';            /* teach with full instrumentation */
+    $('introOv').classList.add('hidden');
+    rollShop();save();
+  }else if(!settings.mode){
+    settings.mode='ASSISTED';            /* safety: only if a run was never started */
+  }
+  render();
+}
+function tutOff(){
+  TUT.on=false;
+  $('tutBanner').classList.add('hidden');
+  tutClearGlow();
+}
+$('tutBtn').onclick=()=>tutStart(true);
+$('helpBtn').onclick=()=>{ if(TUT.on)return; tutStart(false); };
+$('tutNext').onclick=()=>{
+  if(TSTEPS[TUT.step].next&&TUT.step<TSTEPS.length-1)TUT.step++;
+  render();
+};
+$('tutDone').onclick=()=>{ tutOff(); render(); };
+$('tutSkip').onclick=()=>{ tutOff(); render(); };
 
 /* ============ boot ============ */
 const loaded=load();
