@@ -291,7 +291,7 @@ svg .tut-glow,.sock.tut-glow .shape{filter:drop-shadow(0 0 7px rgba(255,179,71,.
   <div class="sect-lbl"><span>Contract Board</span><span id="boardNote" style="letter-spacing:.06em">pick one</span></div>
   <div id="board"></div>
 
-  <div class="sect-lbl"><span>Machine Schematic — Blueprint 01 · The Core</span><span style="letter-spacing:.06em">tap any socket</span></div>
+  <div class="sect-lbl"><span>Machine Schematic — Blueprint 01 · The Core</span><span style="letter-spacing:.06em">tap a part, then its socket</span></div>
 
   <div id="machineWrap">
   <svg viewBox="0 0 360 486" xmlns="http://www.w3.org/2000/svg">
@@ -433,7 +433,7 @@ svg .tut-glow,.sock.tut-glow .shape{filter:drop-shadow(0 0 7px rgba(255,179,71,.
   </div>
 
   <div id="info">
-    <span id="infoText">Tap any socket on the schematic to inspect it. Tap a part in a drawer, then tap a matching socket to install it.</span>
+    <span id="infoText">Tap a part in a drawer to hold it, then tap its matching <b>empty</b> socket to install. Tap an <b>installed</b> socket to inspect it (and SELL / REMOVE).</span>
     <span class="act" id="infoAct"></span>
   </div>
 
@@ -880,7 +880,9 @@ function render(){
     el.classList.toggle('empty',!p);
     el.classList.toggle('sel',!!(S.sel&&S.sel.type==='sock'&&S.sel.k===k));
     const selPart=S.sel&&S.sel.type==='inv'?CAT[S.inv[S.sel.idx].id]:null;
-    el.classList.toggle('can',!!(selPart&&selPart.cl===SOCKDEF[k].cl));
+    /* glow only EMPTY matching sockets — the only places a tap will install. occupied
+       sockets are never install targets (tapping one inspects, never swaps). */
+    el.classList.toggle('can',!!(selPart&&selPart.cl===SOCKDEF[k].cl&&!p));
     const gl=el.querySelector('.glyph'),mk=el.querySelector('.mk');
     if(gl)gl.textContent=p?def.ic:SHORT[SOCKDEF[k].cl];
     if(mk)mk.textContent=p?(def.n+(def.cl==='conv'?' · BAND '+def.a+'–'+def.b+' Hz':def.cl==='glass'?' · '+(p.stage||'INTAKE'):'')).toUpperCase():'';
@@ -1018,7 +1020,9 @@ function renderRewards(){
 }
 function renderInfo(r){
   const t=$('infoText'),a=$('infoAct');a.innerHTML='';
-  if(!S.sel){t.innerHTML='Tap any socket on the schematic to inspect it. Tap a part in a drawer, then tap a matching socket to install it.';return}
+  /* a wrong-class tap left a one-shot note: show it alongside the still-held part, then clear */
+  const note=_flashNote;_flashNote=null;
+  if(!S.sel){t.innerHTML='Tap a part in a drawer to hold it, then tap its matching <b>empty</b> socket to install. Tap an <b>installed</b> socket to inspect it (and SELL / REMOVE).';return}
   if(S.sel.type==='sock'){
     const k=S.sel.k,sd=SOCKDEF[k],p=S.inst[k];
     if(p){
@@ -1037,12 +1041,14 @@ function renderInfo(r){
       sb.onclick=e=>{e.stopPropagation();sellSock(k)};a.appendChild(sb);
     }else{
       t.innerHTML='<span class="code">'+sd.code+' · '+sd.stage+'</span><br><b>Empty socket</b> — accepts any <b>'
-        +CLNAME[sd.cl]+'</b>.'+(sd.cl==='glass'?' Sight Glasses relight one chosen stage readout in MANUAL.':'');
+        +CLNAME[sd.cl]+'</b>. Hold a matching part from a drawer, then tap here to install.'
+        +(sd.cl==='glass'?' Sight Glasses relight one chosen stage readout in MANUAL.':'');
     }
   }else if(S.sel.type==='inv'){
     const p=S.inv[S.sel.idx];if(!p){S.sel=null;return}
     const def=CAT[p.id];
-    t.innerHTML='<b>'+def.n+'</b> — '+def.spec+'.<br>Tap a glowing <b>'+CLNAME[def.cl]+'</b> socket to install.';
+    t.innerHTML=note?note:('<b>'+def.n+'</b> — '+def.spec+'.<br>Holding it — tap a glowing <b>empty '
+      +CLNAME[def.cl]+'</b> socket to install. Tapping an installed socket only inspects it.');
     const sb=document.createElement('button');sb.className='small danger';
     sb.textContent='SELL $'+Math.floor(def.cost/2);
     sb.onclick=e=>{e.stopPropagation();sellInv(S.sel.idx)};a.appendChild(sb);
@@ -1061,22 +1067,39 @@ function clampDial(){
   const res=S.inst.s03?CAT[S.inst.s03.id]:null;
   if(res)S.f=Math.max(res.lo,Math.min(res.hi,S.f));
 }
+/* transient one-render note shown in the info strip (e.g. "wrong socket class").
+   never persisted, never blocks; consumed by the next renderInfo so nothing sticks. */
+let _flashNote=null;
 function onSock(k){
   if(S.running)return;
-  if(S.sel&&S.sel.type==='inv'){
-    const p=S.inv[S.sel.idx];
-    if(p&&CAT[p.id].cl===SOCKDEF[k].cl){ /* install (swap if occupied) */
-      const prev=S.inst[k];
+  _flashNote=null;
+  const occupied=!!S.inst[k];
+  const held=(S.sel&&S.sel.type==='inv')?S.inv[S.sel.idx]:null;
+  /* OCCUPIED socket → only ever SELECT the installed part for inspection (toggle).
+     A tap NEVER removes, swaps, or replaces an installed part — that is deliberate
+     (inspect, then SELL/REMOVE via the info-strip buttons). */
+  if(occupied){
+    S.sel=(S.sel&&S.sel.type==='sock'&&S.sel.k===k)?null:{type:'sock',k};
+    render();return;
+  }
+  /* EMPTY socket with a held part */
+  if(held){
+    if(CAT[held.id].cl===SOCKDEF[k].cl){           /* class matches → INSTALL (empty only) */
       S.inv.splice(S.sel.idx,1);
-      if(CAT[p.id].cl==='glass'&&!p.stage)p.stage='INTAKE';
-      S.inst[k]=p;
-      if(prev)S.inv.push(prev);
+      if(CAT[held.id].cl==='glass'&&!held.stage)held.stage='INTAKE';
+      S.inst[k]=held;
       S.sel={type:'sock',k};
       clampDial();
-      logMove({t:'install',sock:k,id:p.id});
+      logMove({t:'install',sock:k,id:held.id});
       save();render();return;
     }
+    /* class mismatch → non-destructive note; keep holding the part, install nothing */
+    _flashNote='<b>✗ Wrong socket class</b> — <span class="code">'+SOCKDEF[k].code
+      +'</span> takes a <b>'+CLNAME[SOCKDEF[k].cl]+'</b>, not a <b>'+CLNAME[CAT[held.id].cl]
+      +'</b>. Still holding <b>'+CAT[held.id].n+'</b>.';
+    render();return;
   }
+  /* EMPTY socket, nothing held → inspect it (toggle); installs nothing */
   S.sel=(S.sel&&S.sel.type==='sock'&&S.sel.k===k)?null:{type:'sock',k};
   render();
 }
@@ -1303,7 +1326,7 @@ const TSTEPS=[
    },
    hi:'#bench'},
   /* PHASE 4 — each mechanic, one at a time */
-  {t:()=>'Parts are how you reshape the curve. <b>Coils</b> (CHARGE) add <b>pressure</b> — more vim — but each one pours <b class="tw">heat</b>. The two round sockets beside the chamber take them.',
+  {t:()=>'Parts are how you reshape the curve. <b>Coils</b> (CHARGE) add <b>pressure</b> — more vim — but each one pours <b class="tw">heat</b>. The two round sockets beside the chamber take them. To fit any part: <b>tap it in a drawer to hold it, then tap a matching empty socket</b> — tapping a filled socket only inspects it, never swaps.',
    hi:'#sk_c1'},
   {t:()=>'The <b>Sink R-01</b> sheds heat; if heat beats its capacity the whole machine throttles. <b>Forks</b> (S-03f) and the <b>Governor R-02</b> buy <b>stability margin</b> so you can run nearer the redline without a shudder.',
    hi:'#sk_r01'},
@@ -1322,7 +1345,7 @@ const TSTEPS=[
   {t:()=>'Economy in one line: a fulfilled contract <b class="tn">pays</b> (more for surplus, interest and streak) and advances the campaign toward Mk II / Mk III. Miss it and the machine <b class="tw">STALLS</b> — no pay, a $2 subsidy, streak reset, and the contract returns to the board. There is always a way forward.',
    hi:null},
   /* PHASE 7 — concrete first-contract strategy + sign-off */
-  {t:()=>'<b>Your first contract, step by step:</b> 1) drag the dial into the converter band. 2) read the <b>BOTTLENECK</b> chip and the failure flags. 3) buy and install the one part they name (usually a vane for STARVED, a coil for low output, a sink for heat). 4) re-check the gauges, then <b>BENCH PULL</b>. That loop wins every contract. Good luck, operator.',
+  {t:()=>'<b>Your first contract, step by step:</b> 1) drag the dial into the converter band. 2) read the <b>BOTTLENECK</b> chip and the failure flags. 3) buy the one part they name (usually a vane for STARVED, a coil for low output, a sink for heat), then <b>tap that part and tap its matching empty socket</b> to install it. 4) re-check the gauges, then <b>BENCH PULL</b>. That loop wins every contract. Good luck, operator.',
    hi:null,final:true},
 ];
 const TUT_PULL_STEP=TSTEPS.length-1;   /* BENCH PULL unlocks only on the final sign-off step */
