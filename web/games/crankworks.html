@@ -469,6 +469,12 @@ function renderInfo(){
     const rb=document.createElement('button');rb.className='small';
     rb.textContent='ROTATE ⟳';
     rb.onclick=e=>{e.stopPropagation();rotateSel()};a.appendChild(rb);
+    /* a PLACED part can be returned to the bench un-sold (preserves id + rot) */
+    if(from==='grid'){
+      const ub=document.createElement('button');ub.className='small';
+      ub.textContent='↩ BENCH';
+      ub.onclick=e=>{e.stopPropagation();unplaceSel(idx)};a.appendChild(ub);
+    }
     const b=document.createElement('button');b.className='small danger';
     b.textContent='SELL $'+Math.floor(def.cost/2);
     b.onclick=e=>{e.stopPropagation();sell(from,idx)};a.appendChild(b);
@@ -525,6 +531,16 @@ function sell(from,idx){
   S.money+=Math.floor(PARTS[p.id].cost/2);
   if(from==='grid')S.grid[idx]=null;else S.bench.splice(idx,1);
   S.sel=null;logMove({t:'sell',from,idx,id:p.id});render();
+}
+/* Return a PLACED grid piece to the bench WITHOUT selling: keep the full
+   instance (id + rot), free the cell, no economy change. Bench has no cap. */
+function unplaceSel(idx){
+  if(S.running)return;
+  const p=S.grid[idx];
+  if(!p)return;
+  S.grid[idx]=null;
+  S.bench.push(p);
+  S.sel=null;logMove({t:'unplace',idx,id:p.id});render();
 }
 $('rerollBtn').onclick=()=>{if(S.money<2)return;S.money-=2;rollShop();logMove({t:'reroll'});render()};
 function ownsLoad(){return [...S.grid,...S.bench].some(p=>p&&PARTS[p.id].cl==='load')}
