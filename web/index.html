@@ -3,181 +3,231 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ENGINEWORKS LAB — invented machines, honest physics</title>
+<title>ENGINEWORKS LAB — five machines, one daily puzzle each</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#0F1112; --panel:#171A1B; --raised:#1F2425; --line:#2E3536; --line-hi:#475052;
-  --ink:#E9E4D4; --ink-dim:#8E9697;
-  --amber:#FFAE45; --amber-dim:#8A6230; --gold:#E8C268; --green:#8BD17C;
-  --copper:#E08A5A; --red:#E06A5A; --teal:#5ABFB0; --prussian:#6A9BD8; --ember:#E07A3A;
+  --bg:#F3EFE4; --bg2:#FBF9F2; --card:#FFFFFF;
+  --ink:#1C201B; --ink-dim:#6B7066; --line:#E6E0D1; --line-hi:#D4CDB9;
+  --dynamo:#F2A93B; --crank:#E0794A; --core:#3E7CB1; --pipe:#1FAE9C; --foundry:#E0612F;
+  --gold:#B9842A; --green:#3FA45C; --red:#D6573F;
   --disp:'Chakra Petch','Arial Narrow',sans-serif;
   --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{background:var(--bg);color:var(--ink);font-family:var(--mono);font-size:14px;max-width:520px;margin:0 auto;padding-bottom:60px}
-header{padding:14px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#15191A,#101314);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10}
-h1{font-family:var(--disp);font-weight:700;font-size:17px;letter-spacing:.16em}
-h1 span{color:var(--amber)}
-#acctChip{font-size:11px;color:var(--ink-dim);cursor:pointer;border:1px solid var(--line);border-radius:4px;padding:5px 10px;background:var(--panel)}
-#acctChip b{color:var(--gold)}
-main{padding:14px;display:flex;flex-direction:column;gap:18px}
-.sect-lbl{font-size:10px;letter-spacing:.18em;color:var(--ink-dim);text-transform:uppercase;margin-bottom:8px;display:flex;justify-content:space-between;align-items:baseline}
-.hero{font-size:12.5px;line-height:1.65;color:var(--ink-dim);border-left:3px solid var(--amber-dim);background:var(--panel);padding:10px 12px;border-radius:0 5px 5px 0}
-.hero b{color:var(--ink)}
-.leagues{display:flex;gap:8px}
-.lg{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px;text-align:center}
-.lg .nm{font-family:var(--disp);font-size:11px;letter-spacing:.14em;color:var(--gold)}
-.lg .cd{font-size:11px;color:var(--ink-dim);margin-top:3px}
-.lg .pk{font-size:9px;color:var(--ink-dim);opacity:.7;margin-top:2px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:8px}
-.card .ttl{display:flex;justify-content:space-between;align-items:baseline}
-.card .ttl h3{font-family:var(--disp);letter-spacing:.16em;font-size:14px}
-.card .tag{font-size:9px;letter-spacing:.12em;padding:2px 7px;border-radius:3px;border:1px solid var(--line-hi);color:var(--ink-dim)}
-.card .tag.live{color:var(--green);border-color:#3E5A3A}
-.card p{font-size:11.5px;line-height:1.55;color:var(--ink-dim)}
-.playrow{display:flex;gap:6px}
-.playrow a{flex:1;text-align:center;text-decoration:none;font-family:var(--disp);letter-spacing:.1em;font-weight:600;font-size:11px;border:1px solid var(--line-hi);background:var(--raised);color:var(--ink);border-radius:5px;padding:8px 4px}
-.playrow a.main{border-color:var(--amber-dim);color:var(--amber)}
-button{font-family:var(--disp);letter-spacing:.12em;font-weight:600;border:1px solid var(--line-hi);background:var(--raised);color:var(--ink);border-radius:5px;padding:9px 14px;font-size:12px;cursor:pointer}
+body{
+  background:var(--bg);
+  background-image:radial-gradient(var(--bg2) 1px,transparent 1px);
+  background-size:20px 20px;
+  color:var(--ink);font-family:var(--mono);font-size:14px;
+  max-width:900px;margin:0 auto;padding-bottom:50px;
+}
+a{color:inherit}
+header{
+  padding:14px 16px;border-bottom:2px solid var(--ink);background:var(--bg2);
+  display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10;
+}
+h1{font-family:var(--disp);font-weight:700;font-size:18px;letter-spacing:.12em;display:flex;align-items:center;gap:8px}
+h1 .spark{font-size:18px}
+h1 span{background:var(--ink);color:var(--bg2);padding:1px 7px;border-radius:5px}
+#acctChip{font-size:11px;color:var(--ink);cursor:pointer;border:2px solid var(--ink);border-radius:20px;padding:5px 13px;background:var(--card);font-weight:600;font-family:var(--disp);letter-spacing:.08em}
+#acctChip b{color:var(--crank)}
+main{padding:16px;display:flex;flex-direction:column;gap:22px}
+.sect-lbl{font-family:var(--disp);font-size:13px;letter-spacing:.1em;color:var(--ink);margin-bottom:10px;display:flex;justify-content:space-between;align-items:baseline;font-weight:700;text-transform:uppercase}
+.sect-lbl span:last-child{font-family:var(--mono);font-size:10px;letter-spacing:.05em;color:var(--ink-dim);font-weight:400;text-transform:none}
+/* hero */
+.hero{background:var(--ink);color:var(--bg2);border-radius:14px;padding:22px 20px;position:relative;overflow:hidden}
+.hero h2{font-family:var(--disp);font-size:24px;line-height:1.12;letter-spacing:.01em;margin-bottom:8px}
+.hero h2 b{color:var(--dynamo)}
+.hero p{font-size:12.5px;line-height:1.6;color:#C9C6BC;max-width:48ch}
+.hero .chips{display:flex;gap:6px;margin-top:14px;flex-wrap:wrap}
+.hero .chips span{font-size:10px;letter-spacing:.06em;border:1px solid #444b41;border-radius:20px;padding:4px 10px;color:#E9E4D4}
+.hero .pop{position:absolute;right:-14px;top:-10px;font-size:120px;opacity:.10;transform:rotate(-12deg)}
+/* leagues */
+.leagues{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.lg{background:var(--card);border:2px solid var(--ink);border-radius:12px;padding:12px;text-align:center;box-shadow:3px 3px 0 var(--line-hi)}
+.lg .nm{font-family:var(--disp);font-size:13px;letter-spacing:.1em;color:var(--ink);font-weight:700}
+.lg .cd{font-size:14px;color:var(--crank);margin-top:5px;font-weight:600}
+.lg .cd small{display:block;font-size:9px;color:var(--ink-dim);letter-spacing:.08em;font-weight:400;margin-top:2px}
+.lg .pk{font-size:9px;color:var(--ink-dim);opacity:.8;margin-top:4px}
+/* game grid */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.gcard{background:var(--card);border:2px solid var(--ink);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;box-shadow:4px 4px 0 var(--accent);transition:transform .12s,box-shadow .12s}
+.gcard:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--accent)}
+.gtop{background:var(--accent);padding:14px 14px 12px;display:flex;align-items:center;justify-content:space-between;color:#fff}
+.gtop .gly{font-size:34px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.25))}
+.gtop .gtag{font-family:var(--disp);font-size:9px;letter-spacing:.16em;background:rgba(0,0,0,.22);padding:3px 8px;border-radius:20px}
+.gbody{padding:12px 13px 13px;display:flex;flex-direction:column;gap:8px;flex:1}
+.gbody h3{font-family:var(--disp);font-size:17px;letter-spacing:.08em}
+.gbody p{font-size:11.5px;line-height:1.5;color:var(--ink-dim);flex:1}
+.plays{display:flex;gap:6px}
+.play{flex:1;text-align:center;text-decoration:none;font-family:var(--disp);letter-spacing:.06em;font-weight:600;font-size:11px;border:2px solid var(--ink);border-radius:8px;padding:8px 4px;background:var(--card);color:var(--ink)}
+.play.main{background:var(--accent);color:#fff;border-color:var(--ink)}
+.play:active{transform:translateY(1px)}
+/* buttons */
+button{font-family:var(--disp);letter-spacing:.08em;font-weight:600;border:2px solid var(--ink);background:var(--card);color:var(--ink);border-radius:9px;padding:9px 14px;font-size:12px;cursor:pointer}
 button:active{transform:translateY(1px)}
 button:disabled{opacity:.4;pointer-events:none}
-button.cta{border-color:var(--amber-dim);background:linear-gradient(180deg,#33240F,#241B10);color:var(--amber);font-size:13px;padding:12px}
-button.small{padding:5px 9px;font-size:10px}
-button.danger{border-color:#6B3A33;color:var(--red)}
+button.cta{background:var(--dynamo);color:var(--ink);font-size:13px;padding:13px;width:100%;box-shadow:3px 3px 0 var(--ink)}
+button.small{padding:5px 10px;font-size:10px;border-width:1px;border-radius:7px}
+button.danger{border-color:var(--red);color:var(--red)}
+/* leaderboards */
 .tabs{display:flex;gap:6px;flex-wrap:wrap}
-.tabs button{padding:6px 10px;font-size:10px;color:var(--ink-dim)}
-.tabs button.on{color:var(--amber);border-color:var(--amber-dim)}
+.tabs button{padding:6px 12px;font-size:10px;color:var(--ink-dim);border-radius:20px;border-width:1px}
+.tabs button.on{color:#fff;background:var(--ink);border-color:var(--ink)}
+.boardwrap{background:var(--card);border:2px solid var(--ink);border-radius:12px;margin-top:10px;overflow:hidden}
 table{width:100%;border-collapse:collapse;font-size:11.5px}
-th{font-size:9px;letter-spacing:.14em;color:var(--ink-dim);text-transform:uppercase;text-align:left;padding:6px 6px;border-bottom:1px solid var(--line)}
-td{padding:7px 6px;border-bottom:1px solid #1C2122}
+th{font-size:9px;letter-spacing:.12em;color:var(--ink-dim);text-transform:uppercase;text-align:left;padding:8px 8px;border-bottom:2px solid var(--line)}
+td{padding:8px;border-bottom:1px solid var(--line)}
 td.r,th.r{text-align:right}
-tr.me td{color:var(--gold)}
-.modebadge{font-size:8.5px;letter-spacing:.08em;border:1px solid var(--line);border-radius:3px;padding:1px 4px;color:var(--ink-dim)}
-.empty{font-size:11.5px;color:var(--ink-dim);padding:14px 6px;text-align:center}
-.paycard{background:linear-gradient(180deg,#1B1A14,#15161A);border:1px solid var(--amber-dim);border-radius:6px;padding:14px;display:flex;flex-direction:column;gap:8px}
-.paycard .price{font-family:var(--disp);font-size:24px;color:var(--gold)}
-.paycard .price small{font-size:11px;color:var(--ink-dim);font-family:var(--mono)}
-.paycard ul{list-style:none;font-size:11.5px;color:var(--ink-dim);display:flex;flex-direction:column;gap:4px}
-.paycard li::before{content:'» ';color:var(--amber)}
-.note{font-size:10.5px;color:var(--ink-dim);opacity:.75;line-height:1.5}
-.overlay{position:fixed;inset:0;background:rgba(10,12,13,.9);z-index:50;display:flex;align-items:center;justify-content:center;padding:20px}
+tr.me td{color:var(--crank);font-weight:600}
+.modebadge{font-size:8.5px;letter-spacing:.06em;border:1px solid var(--line-hi);border-radius:20px;padding:1px 7px;color:var(--ink-dim)}
+.empty{font-size:11.5px;color:var(--ink-dim);padding:16px 8px;text-align:center}
+#myRank{font-size:11px;color:var(--crank);padding:9px;background:#FFF6EC;border-top:1px solid var(--line);font-weight:600}
+/* paywall */
+.paycard{background:var(--card);border:2px solid var(--ink);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px;box-shadow:4px 4px 0 var(--dynamo)}
+.paycard .price{font-family:var(--disp);font-size:30px;color:var(--ink)}
+.paycard .price small{font-size:12px;color:var(--ink-dim);font-family:var(--mono)}
+.paycard ul{list-style:none;font-size:12px;color:var(--ink-dim);display:flex;flex-direction:column;gap:6px}
+.paycard li::before{content:'✦ ';color:var(--dynamo)}
+.paycard li b{color:var(--ink)}
+.note{font-size:10.5px;color:var(--ink-dim);line-height:1.5}
+.acct-box{display:flex;flex-direction:column;gap:9px;background:var(--card);border:2px solid var(--ink);border-radius:12px;padding:14px;font-size:11.5px;color:var(--ink-dim)}
+.acct-box b{color:var(--ink)}
+.acct-box .row{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.sub-on{color:var(--green)}
+.sub-off{color:var(--crank)}
+footer{padding:20px 16px;font-size:10.5px;color:var(--ink-dim);line-height:1.6;border-top:1px solid var(--line);margin-top:6px}
+footer b{color:var(--ink)}
+/* auth modal */
+.overlay{position:fixed;inset:0;background:rgba(28,32,27,.55);z-index:50;display:flex;align-items:center;justify-content:center;padding:20px}
 .overlay.hidden{display:none}
-.modal{background:var(--panel);border:1px solid var(--line-hi);border-radius:8px;padding:22px 20px;max-width:380px;width:100%;display:flex;flex-direction:column;gap:10px}
-.modal h2{font-family:var(--disp);letter-spacing:.16em;font-size:16px}
-.modal h2 span{color:var(--amber)}
-.modal input{background:#0A0C0D;border:1px solid var(--line);border-radius:4px;color:var(--ink);font-family:var(--mono);font-size:13px;padding:9px 10px;width:100%}
-.modal input:focus{outline:none;border-color:var(--amber-dim)}
+.modal{background:var(--card);border:2px solid var(--ink);border-radius:14px;padding:22px 20px;max-width:380px;width:100%;display:flex;flex-direction:column;gap:11px;box-shadow:6px 6px 0 var(--ink)}
+.modal h2{font-family:var(--disp);letter-spacing:.1em;font-size:18px}
+.modal h2 span{color:var(--crank)}
+.modal input{background:var(--bg2);border:2px solid var(--line-hi);border-radius:8px;color:var(--ink);font-family:var(--mono);font-size:13px;padding:10px;width:100%}
+.modal input:focus{outline:none;border-color:var(--dynamo)}
 .modal .err{font-size:11px;color:var(--red);min-height:14px}
 .modal .swap{font-size:11px;color:var(--ink-dim);text-align:center;cursor:pointer;text-decoration:underline}
-footer{padding:18px 14px;font-size:10.5px;color:var(--ink-dim);opacity:.8;line-height:1.6;border-top:1px solid var(--line);margin-top:10px}
-.acct-box{display:flex;flex-direction:column;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px;font-size:11.5px;color:var(--ink-dim)}
-.acct-box b{color:var(--ink)}
-.acct-box .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.sub-on{color:var(--green)}
-.sub-off{color:var(--copper)}
+@media(max-width:560px){.leagues{grid-template-columns:1fr 1fr 1fr;gap:6px}.lg{padding:9px 5px}.lg .cd{font-size:12px}}
 </style>
 </head>
 <body>
 
 <header>
-  <h1>ENGINEWORKS <span>LAB</span></h1>
+  <h1><span class="spark">⚙️</span>ENGINEWORKS <span>LAB</span></h1>
   <div id="acctChip">SIGN IN</div>
 </header>
 
 <main>
   <div class="hero">
-    <b>Invented machines. Honest physics.</b> Build engines, drivetrains and reactors against
-    seeded daily targets — identical for every operator on Earth. Play free forever;
-    subscribe to post ranked scores in the daily, weekly and monthly leagues.
+    <div class="pop">🛠️</div>
+    <h2>Five machines.<br><b>A fresh puzzle in each, every day.</b></h2>
+    <p>Build engines, drivetrains, reactors, pipe networks and alloys against a puzzle that's the same for everyone on the planet that day. Play free forever — subscribe to post ranked scores in the daily, weekly &amp; monthly leagues.</p>
+    <div class="chips"><span>🎮 free to play</span><span>🌍 one seed for everyone</span><span>🏆 ranked leagues</span><span>📱 web now · apps soon</span></div>
   </div>
 
   <section>
-    <div class="sect-lbl"><span>Leagues — seeded, UTC, same machine for everyone</span></div>
+    <div class="sect-lbl"><span>Fresh Puzzles Drop In</span></div>
     <div class="leagues">
-      <div class="lg"><div class="nm">DAILY</div><div class="cd" id="cdDaily">—</div><div class="pk" id="pkDaily"></div></div>
-      <div class="lg"><div class="nm">WEEKLY</div><div class="cd" id="cdWeekly">—</div><div class="pk" id="pkWeekly"></div></div>
-      <div class="lg"><div class="nm">MONTHLY</div><div class="cd" id="cdMonthly">—</div><div class="pk" id="pkMonthly"></div></div>
+      <div class="lg"><div class="nm">DAILY</div><div class="cd" id="cdDaily">—<small>until reset</small></div><div class="pk" id="pkDaily"></div></div>
+      <div class="lg"><div class="nm">WEEKLY</div><div class="cd" id="cdWeekly">—<small>until reset</small></div><div class="pk" id="pkWeekly"></div></div>
+      <div class="lg"><div class="nm">MONTHLY</div><div class="cd" id="cdMonthly">—<small>until reset</small></div><div class="pk" id="pkMonthly"></div></div>
     </div>
   </section>
 
   <section>
-    <div class="sect-lbl"><span>The Catalog</span></div>
-    <div style="display:flex;flex-direction:column;gap:10px">
-      <div class="card">
-        <div class="ttl"><h3 style="color:var(--amber)">DYNAMO</h3><span class="tag live">PLAYABLE</span></div>
-        <p>The daily engine. Place generators, amps and converters on the grid; charge that finds no converter is <b>WASTED</b>. Placement economics vs an escalating quota.</p>
-        <div class="playrow">
-          <a class="main" href="/play/dynamo?league=daily">DAILY</a>
-          <a href="/play/dynamo?league=weekly">WEEKLY</a>
-          <a href="/play/dynamo?league=monthly">MONTHLY</a>
+    <div class="sect-lbl"><span>Pick a Machine</span><span>tap DAILY to play</span></div>
+    <div class="grid">
+      <div class="gcard" style="--accent:var(--dynamo)">
+        <div class="gtop"><span class="gly">⚡</span><span class="gtag">PLACEMENT</span></div>
+        <div class="gbody">
+          <h3>DYNAMO</h3>
+          <p>Place generators, amps and converters on the grid. Charge that finds no converter is <b>wasted</b>. Beat the climbing quota.</p>
+          <div class="plays">
+            <a class="play main" href="/play/dynamo?league=daily">DAILY</a>
+            <a class="play" href="/play/dynamo?league=weekly">WK</a>
+            <a class="play" href="/play/dynamo?league=monthly">MO</a>
+          </div>
         </div>
       </div>
-      <div class="card">
-        <div class="ttl"><h3 style="color:var(--copper)">CRANKWORKS</h3><span class="tag live">PLAYABLE</span></div>
-        <p>Drivetrain design. Typed ports, rotation, friction, reversible gearing. Turbines want RPM, presses want torque — your gearbox decides who eats.</p>
-        <div class="playrow">
-          <a class="main" href="/play/crankworks?league=daily">DAILY</a>
-          <a href="/play/crankworks?league=weekly">WEEKLY</a>
-          <a href="/play/crankworks?league=monthly">MONTHLY</a>
+      <div class="gcard" style="--accent:var(--crank)">
+        <div class="gtop"><span class="gly">⚙️</span><span class="gtag">DRIVETRAIN</span></div>
+        <div class="gbody">
+          <h3>CRANKWORKS</h3>
+          <p>Mate the ports, rotate the parts, route torque. Turbines want RPM, presses want torque — your gearbox decides who eats.</p>
+          <div class="plays">
+            <a class="play main" href="/play/crankworks?league=daily">DAILY</a>
+            <a class="play" href="/play/crankworks?league=weekly">WK</a>
+            <a class="play" href="/play/crankworks?league=monthly">MO</a>
+          </div>
         </div>
       </div>
-      <div class="card">
-        <div class="ttl"><h3 style="color:var(--prussian)">COREWORKS</h3><span class="tag live">PLAYABLE</span></div>
-        <p>Socket anatomy and a frequency dial. Flux in, vim out — if the resonator and converter band agree. Mixed-tier machines are where the engineering lives.</p>
-        <div class="playrow">
-          <a class="main" href="/play/coreworks?league=daily">DAILY</a>
-          <a href="/play/coreworks?league=weekly">WEEKLY</a>
-          <a href="/play/coreworks?league=monthly">MONTHLY</a>
+      <div class="gcard" style="--accent:var(--core)">
+        <div class="gtop"><span class="gly">⚛️</span><span class="gtag">TUNING</span></div>
+        <div class="gbody">
+          <h3>COREWORKS</h3>
+          <p>Socket anatomy and a frequency dial. Flux in, vim out — but only if the resonator and the converter band agree.</p>
+          <div class="plays">
+            <a class="play main" href="/play/coreworks?league=daily">DAILY</a>
+            <a class="play" href="/play/coreworks?league=weekly">WK</a>
+            <a class="play" href="/play/coreworks?league=monthly">MO</a>
+          </div>
         </div>
       </div>
-      <div class="card">
-        <div class="ttl"><h3 style="color:var(--teal)">PIPEWORKS</h3><span class="tag live">PLAYABLE</span></div>
-        <p>Pressure networks with rated pipes — pressure above rating is a <b>BURST</b> you were warned about. Boosted copper is a time bomb you chose.</p>
-        <div class="playrow">
-          <a class="main" href="/play/pipeworks?league=daily">DAILY</a>
-          <a href="/play/pipeworks?league=weekly">WEEKLY</a>
-          <a href="/play/pipeworks?league=monthly">MONTHLY</a>
+      <div class="gcard" style="--accent:var(--pipe)">
+        <div class="gtop"><span class="gly">💧</span><span class="gtag">PRESSURE</span></div>
+        <div class="gbody">
+          <h3>PIPEWORKS</h3>
+          <p>Route fluid from pumps to thirsty taps through rated pipe. Boosted copper is a time bomb you chose — mind the <b>burst</b>.</p>
+          <div class="plays">
+            <a class="play main" href="/play/pipeworks?league=daily">DAILY</a>
+            <a class="play" href="/play/pipeworks?league=weekly">WK</a>
+            <a class="play" href="/play/pipeworks?league=monthly">MO</a>
+          </div>
         </div>
       </div>
-      <div class="card">
-        <div class="ttl"><h3 style="color:var(--ember)">FOUNDRY</h3><span class="tag live">PLAYABLE</span></div>
-        <p>Invented alloy chemistry. Your Materials Codex fills in as you pour — knowledge is the progression, and in STANDARD mode it is literally your instrumentation.</p>
-        <div class="playrow">
-          <a class="main" href="/play/foundry?league=daily">DAILY</a>
-          <a href="/play/foundry?league=weekly">WEEKLY</a>
-          <a href="/play/foundry?league=monthly">MONTHLY</a>
+      <div class="gcard" style="--accent:var(--foundry)">
+        <div class="gtop"><span class="gly">🔥</span><span class="gtag">CHEMISTRY</span></div>
+        <div class="gbody">
+          <h3>FOUNDRY</h3>
+          <p>Mix invented ores, set heat and quench, pour an alloy to spec. Your Materials Codex fills in as you learn — knowledge is the win.</p>
+          <div class="plays">
+            <a class="play main" href="/play/foundry?league=daily">DAILY</a>
+            <a class="play" href="/play/foundry?league=weekly">WK</a>
+            <a class="play" href="/play/foundry?league=monthly">MO</a>
+          </div>
         </div>
       </div>
     </div>
   </section>
 
   <section id="boards">
-    <div class="sect-lbl"><span>Leaderboards</span><span id="boardMeta" style="letter-spacing:.05em"></span></div>
+    <div class="sect-lbl"><span>🏆 Leaderboards</span><span id="boardMeta"></span></div>
     <div class="tabs" id="gameTabs"></div>
     <div class="tabs" id="leagueTabs" style="margin-top:6px"></div>
-    <div style="background:var(--panel);border:1px solid var(--line);border-radius:6px;margin-top:8px;overflow:hidden">
+    <div class="boardwrap">
       <table>
         <thead><tr><th>#</th><th>Operator</th><th>Mode</th><th class="r">Round</th><th class="r">Points</th></tr></thead>
         <tbody id="boardBody"><tr><td colspan="5" class="empty">loading…</td></tr></tbody>
       </table>
-      <div id="myRank" class="empty" style="display:none"></div>
+      <div id="myRank" style="display:none"></div>
     </div>
   </section>
 
   <section id="upgrade">
-    <div class="sect-lbl"><span>Ranked Access</span></div>
+    <div class="sect-lbl"><span>⭐ Ranked Access</span></div>
     <div class="paycard">
       <div class="price">$4.99 <small>/ month</small></div>
       <ul>
-        <li>Post scores to <b style="color:var(--ink)">daily, weekly &amp; monthly leagues</b> across the whole catalog</li>
+        <li>Post scores to <b>daily, weekly &amp; monthly leagues</b> across all five games</li>
         <li>Operator-mode multipliers count on the boards (MANUAL ×1.5)</li>
-        <li>Move-log verified rankings — no pay-to-win, ever (Bible §1.4)</li>
-        <li>Every game stays free to play unranked, forever</li>
+        <li>Move-log verified rankings — <b>no pay-to-win, ever</b></li>
+        <li>Every game stays <b>free to play unranked</b>, forever</li>
       </ul>
       <button class="cta" id="subBtn">SUBSCRIBE — POST RANKED SCORES</button>
-      <div class="note">Subscription buys access to competition, never advantage inside it. All operators play the identical seeded machine.</div>
+      <div class="note">Your subscription buys a seat in the competition, never an advantage inside it. Every operator plays the identical seeded machine.</div>
     </div>
   </section>
 
@@ -188,7 +238,7 @@ footer{padding:18px 14px;font-size:10.5px;color:var(--ink-dim);opacity:.8;line-h
 </main>
 
 <footer>
-  ENGINEWORKS LAB · single shared physics, seeded daily from UTC.
+  <b>ENGINEWORKS LAB</b> — invented machines, honest physics. One shared puzzle, seeded daily from the UTC date.<br>
   Web first — iOS &amp; Android apps are on the roadmap (same engine, wrapped native).
 </footer>
 
@@ -289,7 +339,7 @@ function tickCds(){
   if(!LG)return;
   const now=Date.now();
   for(const[lg,el,pk]of[['daily','cdDaily','pkDaily'],['weekly','cdWeekly','pkWeekly'],['monthly','cdMonthly','pkMonthly']]){
-    $(el).textContent=fmtCd(LG[lg].endsAt-now);$(pk).textContent=LG[lg].key;
+    $(el).innerHTML=fmtCd(LG[lg].endsAt-now)+'<small>until reset</small>';$(pk).textContent=LG[lg].key;
   }
 }
 setInterval(tickCds,1000);
