@@ -133,6 +133,66 @@ button.danger{border-color:#6B3A33;color:var(--red)}
 .modecard .md{font-family:var(--mono);font-size:10.5px;color:var(--ink-dim);letter-spacing:0;font-weight:400;margin-top:2px;text-transform:none}
 .modecard.sel{border-color:var(--amber);box-shadow:0 0 0 1px rgba(255,177,61,.3)}
 .modecard.sel .mn{color:var(--amber)}
+/* ===== FIELD GUIDE (additive, display-only reference) ===== */
+#guideScrim{position:fixed;inset:0;background:rgba(10,12,13,.78);z-index:39;display:none}
+#guideScrim.open{display:block}
+#guide{
+  position:fixed;right:14px;top:64px;width:320px;max-height:86vh;overflow-y:auto;
+  background:var(--panel);border:1px solid var(--line-hi);border-radius:8px;
+  padding:14px 14px 16px;z-index:40;
+  box-shadow:0 8px 28px rgba(0,0,0,.45);
+  -webkit-overflow-scrolling:touch;
+}
+#guide[hidden]{display:none}
+.guide-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;position:sticky;top:-14px;background:var(--panel);padding-top:2px}
+.guide-head h2{font-family:var(--disp);font-weight:700;letter-spacing:.16em;font-size:15px}
+.guide-head h2 span{color:var(--amber)}
+#guideClose{padding:4px 9px;font-size:12px;line-height:1}
+.guide-lede{font-size:11px;line-height:1.5;color:var(--ink-dim);margin-bottom:10px}
+.guide-lede b{color:var(--ink)}
+.g-sect{border-top:1px solid var(--line);padding-top:9px;margin-top:9px}
+.g-sect:first-of-type{border-top:0;padding-top:0;margin-top:0}
+.g-sect>h3{font-family:var(--disp);font-weight:600;letter-spacing:.16em;font-size:11px;color:var(--olive);text-transform:uppercase;margin-bottom:6px}
+.g-flow{font-size:11px;line-height:1.55;color:var(--ink-dim);margin-bottom:4px}
+.g-flow b{color:var(--ink)}
+.g-flow .o{color:var(--amber);font-weight:600}
+.g-grp{margin-bottom:9px}
+.g-grp:last-child{margin-bottom:0}
+.g-grp>.gh{font-size:10px;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;margin-bottom:4px}
+.g-part{display:grid;grid-template-columns:22px 1fr;gap:2px 7px;padding:5px 0;border-bottom:1px dashed var(--line)}
+.g-part:last-child{border-bottom:0}
+.g-part .gic{font-size:16px;text-align:center;line-height:1.2}
+.g-part .gic.gen{color:var(--amber)}.g-part .gic.bst{color:var(--gold)}
+.g-part .gic.cnv{color:var(--green)}.g-part .gic.sto,.g-part .gic.utl{color:var(--olive)}
+.g-part .gnm{font-size:11px;font-weight:600;color:var(--ink)}
+.g-part .gnm .tg{font-size:9px;font-weight:500;color:var(--ink-dim);letter-spacing:.04em;margin-left:5px;border:1px solid var(--line);border-radius:3px;padding:0 4px}
+.g-part .gtx{grid-column:2;font-size:10.5px;line-height:1.5;color:var(--ink-dim)}
+.g-part .gtx b{color:var(--ink)}
+.g-part .gtx .lk{color:var(--olive)}
+.g-list{list-style:none;display:flex;flex-direction:column;gap:6px}
+.g-list li{font-size:10.5px;line-height:1.5;color:var(--ink-dim);padding-left:13px;position:relative}
+.g-list li:before{content:'▸';position:absolute;left:0;color:var(--amber)}
+.g-list li b{color:var(--ink)}
+.g-fail{margin-bottom:8px}
+.g-fail:last-child{margin-bottom:0}
+.g-fail .ft{font-size:11px;font-weight:600;letter-spacing:.04em;margin-bottom:2px}
+.g-fail.wasted .ft{color:var(--amber)}
+.g-fail.stalled .ft{color:var(--red)}
+.g-fail .fx{font-size:10.5px;line-height:1.5;color:var(--ink-dim)}
+.g-fail .fx b{color:var(--ink)}
+@media (min-width:960px){
+  #guideScrim{display:none!important}
+  body.guide-closed #guide{display:none}
+}
+@media (max-width:959px){
+  #guide{
+    left:50%;right:auto;top:54px;transform:translateX(-50%);
+    width:min(92vw,460px);max-height:calc(100vh - 74px);
+  }
+  body:not(.guide-open) #guide{display:none}
+  body.guide-open #guideScrim{display:block}
+}
+@media (prefers-reduced-motion: reduce){#guide{box-shadow:none}}
 </style>
 </head>
 <body>
@@ -142,6 +202,7 @@ button.danger{border-color:#6B3A33;color:var(--red)}
     <h1>DYNA<span>MO</span></h1>
     <div style="display:flex;align-items:center;gap:8px">
       <div class="daytag" id="dayTag"></div>
+      <button class="small" id="guideBtn" title="Open the field guide reference">📖 GUIDE</button>
       <button class="small" id="helpBtn" title="Replay the tutorial">❔ HELP</button>
       <button class="small" id="shareTop">SHARE</button>
     </div>
@@ -186,6 +247,15 @@ button.danger{border-color:#6B3A33;color:var(--red)}
 <div id="runbar">
   <button id="runBtn">RUN ENGINE</button>
 </div>
+
+<div id="guideScrim"></div>
+<aside id="guide" aria-label="Field guide" role="region">
+  <div class="guide-head">
+    <h2>FIELD <span>GUIDE</span></h2>
+    <button class="small" id="guideClose" title="Close the field guide">✕</button>
+  </div>
+  <div id="guideBody"></div>
+</aside>
 
 <div class="overlay" id="introOv">
   <div class="modal">
@@ -964,6 +1034,110 @@ $('startBtn').onclick=()=>{
   $('introOv').classList.add('hidden');
   rollShop();save();render();
 };
+
+/* ============ field guide (additive reference; display-only) ============
+   A persistent reference panel separate from the step-by-step tutorial. It NEVER
+   touches game state, the sim, rng, the save, or any existing element — it only
+   reads PARTS (so the numbers stay in sync) plus hand-written connection/strategy/
+   failure prose. Responsive via CSS: a pinned side panel on wide screens, a
+   dismissable drawer/dropdown overlay on narrow (mobile / app) screens.
+   This DYNAMO build is the reference layout to replicate across the other games. */
+const GUIDE={
+  /* per-part connection / interaction prose, keyed by PARTS id. The icon, name and
+     numeric effect are pulled live from PARTS[id]; this is the "what it connects to". */
+  link:{
+    dyn:'The cheap workhorse plant. Cluster a few under shared <b class="lk">Amp/Coil</b> boosters and feed one <b class="lk">Converter</b>.',
+    rea:'Heavier base than a Dynamo — a better target for the same multiplier stack. Sell up to Reactors once your boosters outrun your generators.',
+    tbn:'The big iron. One Turbine ringed by boosters out-produces a row of Dynamos; pair it with a high-capacity <b class="lk">Refinery</b> so the pool isn\'t wasted.',
+    amp:'Makes no charge itself — multiplies every <b class="lk">generator</b> it orthogonally touches. Stacks <b>multiplicatively</b> with other Amps/Coils on the same plant. A <b class="lk">Flux Lens</b> can double one Amp.',
+    coil:'Stronger Amp. ×3 to adjacent <b class="lk">generators</b>, stacks multiplicatively (Amp+Coil on one plant = ×6). The strongest single multiplier a <b class="lk">Flux Lens</b> will choose to double.',
+    rel:'Force-multiplier for its neighbors: bordering <b class="lk">generators</b> output ×(1+relays); bordering <b class="lk">converters</b> have capacity doubled per relay (×2, ×4, ×8…). Relay-stack a Refinery to drain a huge pool.',
+    ovc:'<b>Global</b> — needs no adjacency. Every generator anywhere gains +4⚡ base per Overclock, and that +4 lands <b>before</b> multipliers, so <b class="lk">Amps/Coils</b> scale it too.',
+    surge:'The long-game spine. Doubles in place each round; <b>moving it (or re-placing) resets it to 2⚡</b>. Commit one early, never touch it, and feed its swelling overflow to a relay-stacked <b class="lk">Refinery/Manifold</b> bank.',
+    edge:'Anti-density generator: pays +4⚡ for every adjacent <b>EMPTY</b> cell. The opposite of an Amp cluster — give it breathing room, don\'t crowd it.',
+    cnv:'Drinks the shared pool in <b>reading order</b> (left→right, top→bottom). Capacity doubles per adjacent <b class="lk">Relay</b>. Overflow it can\'t hold trickle-converts (◬ spill).',
+    ref:'Bigger appetite and a better rate than a Converter, but only pays off if the pool is large enough to fill it. Capacity doubles per adjacent <b class="lk">Relay</b> — the late-game pool drainer.',
+    mani:'Turns a row of converters into a bank: +15⚡ capacity for each adjacent <b class="lk">converter-class</b> part (Converter/Refinery/Manifold). Place it amid a converter cluster.',
+    cap:'Banks leftover charge <b>after</b> converters drink, then releases it into next run\'s pool. Turns an overbuilt core\'s overflow into a head start instead of WASTE.',
+    lens:'Doubles the multiplier of its single <b>strongest</b> adjacent <b class="lk">Amp/Coil</b> (×2→×4, ×3→×6). Each Amp/Coil can be claimed by only one Lens — late multiplier scaling without spamming amps.',
+    fus:'Insurance. On a missed quota one Fuse <b>burns</b> off the grid to preserve your streak and base pay instead of <b class="lk">STALLING</b>. A safety net for a risky reach.',
+    mtr:'No sim effect. In <b>MANUAL</b> mode only: one Meter on the grid restores the projected-total readout; a second restores the waste figure. Pure instrumentation.',
+  },
+  /* display groups (class → ordered part ids). Mirrors the PARTS classes. */
+  groups:[
+    ['Generators — make ⚡ into the shared pool',['dyn','rea','tbn','surge','edge']],
+    ['Boosters — multiply or trigger neighbors',['amp','coil','rel','ovc','lens']],
+    ['Converters — turn pooled ⚡ into points',['cnv','ref','mani']],
+    ['Storage — carry charge between runs',['cap']],
+    ['Utility — instrumentation & insurance',['mtr','fus']],
+  ],
+  strategy:[
+    'Keep <b>conversion capacity ahead of generation</b>. Charge above what your converters can drink each run is WASTED — every overbuilt generator without an appetite to match is dead weight.',
+    'Stack boosters <b>multiplicatively around a few strong plants</b>, not spread thin. An Amp + a Coil on one Turbine beats the same parts scattered across Dynamos.',
+    'Expand the floor (<b>+ROW</b>, up to 12) a round or two <b>before</b> you need the space — credits are cheaper than a stall, and room lets you grow the booster ring.',
+    'Commit a <b>Surge Cell early and protect its cell</b>. It starts tiny (2⚡) but doubles every untouched round; the geometric tail is how engines chase round 100+. Moving it throws that away.',
+    'Sell obsolete generators to fund upgrades — half-price back, then buy a Reactor/Turbine or another converter. Brute force without reinvestment walls in the twenties.',
+    'Operator mode is a score-vs-sight trade: <b>ASSISTED ×1.0</b> shows everything, <b>STANDARD ×1.25</b> shows only the projected total, <b>MANUAL ×1.5</b> shows nothing live (buy Meters ◫ to read out). Same sim, same seed.',
+  ],
+  failures:[
+    {cls:'wasted',t:'WASTED ⚡',
+     fix:'Charge above your converters\' capacity. In ASSISTED it shows as "⚠ n⚡ waste" in the ghost line; the run report always spells it out. <b>Three fixes:</b> (1) add Converter/Refinery capacity; (2) relay-stack a converter to double its appetite; (3) bank the overflow in a Capacitor ◎. A converter on the grid also trickle-converts (◬ spill) the remainder — but full-rate capacity always scores far more.'},
+    {cls:'stalled',t:'STALLED',
+     fix:'You missed the quota: <b>no pay this shift, streak resets to 0, and the same quota waits next round</b> (plus a $2 subsidy). No death — there is always a way forward. A <b>Fuse ◉</b> on the grid prevents it: on a miss one Fuse burns to honor your base pay and preserve your streak instead of stalling.'},
+  ],
+};
+function renderGuide(){
+  const body=$('guideBody');
+  if(!body)return;
+  let h='';
+  /* premise + how it works */
+  h+='<p class="guide-lede">Build a machine whose <b>output</b> beats a climbing <b>quota</b> every round — same seed for everyone today. This panel is an always-on reference; the <b>❔ HELP</b> tutorial walks you through it step by step.</p>';
+  h+='<div class="g-sect"><h3>How it works</h3>';
+  h+='<p class="g-flow">Each run resolves in order: <span class="o">1</span> stored charge in capacitors releases into one <b>shared pool</b> → <span class="o">2</span> generators fire in <b>reading order</b> (left→right, top→bottom), boosted by adjacent multipliers → <span class="o">3</span> converters drink the shared pool in reading order → <span class="o">4</span> capacitors bank up to 40⚡ of the leftover → <span class="o">5</span> any remainder trickle-converts (◬ spill) if a converter exists, then the rest is <b>WASTED</b>.</p>';
+  h+='<p class="g-flow"><b>Adjacency</b> is orthogonal only — the four cells sharing an edge, no diagonals. <b>Forecast</b> with the ghost gauge: keep projected output ahead of the next quota and your converter capacity ahead of your generation.</p></div>';
+  /* parts grouped by class */
+  h+='<div class="g-sect"><h3>Parts</h3>';
+  for(const[label,ids]of GUIDE.groups){
+    h+='<div class="g-grp"><div class="gh">'+label+'</div>';
+    for(const id of ids){
+      const def=PARTS[id];if(!def)continue;
+      const tag=def.tag?'<span class="tg">'+def.tag+'</span>':'';
+      const link=GUIDE.link[id]||'';
+      h+='<div class="g-part"><div class="gic '+def.cl+'">'+def.ic+'</div>'
+        +'<div class="gnm">'+def.n+tag+'</div>'
+        +'<div class="gtx">'+def.d+(link?' '+link:'')+'</div></div>';
+    }
+    h+='</div>';
+  }
+  h+='</div>';
+  /* strategy */
+  h+='<div class="g-sect"><h3>Strategy</h3><ul class="g-list">';
+  for(const s of GUIDE.strategy)h+='<li>'+s+'</li>';
+  h+='</ul></div>';
+  /* failures */
+  h+='<div class="g-sect"><h3>Failures</h3>';
+  for(const f of GUIDE.failures){
+    h+='<div class="g-fail '+f.cls+'"><div class="ft">'+f.t+'</div><div class="fx">'+f.fix+'</div></div>';
+  }
+  h+='</div>';
+  body.innerHTML=h;
+}
+/* responsive toggle. Wide (≥960px): pinned side panel, body.guide-closed hides it.
+   Narrow (<960px): drawer overlay, body.guide-open shows it + scrim. CSS media
+   queries pick which class governs visibility; we just flip both intents. */
+let guideOpen=window.matchMedia('(min-width:960px)').matches; /* visible by default on wide */
+function syncGuide(){
+  document.body.classList.toggle('guide-open',guideOpen);
+  document.body.classList.toggle('guide-closed',!guideOpen);
+  const sc=$('guideScrim');if(sc)sc.classList.toggle('open',guideOpen);
+}
+function toggleGuide(){guideOpen=!guideOpen;syncGuide()}
+function closeGuide(){guideOpen=false;syncGuide()}
+$('guideBtn').onclick=toggleGuide;
+$('guideClose').onclick=closeGuide;
+$('guideScrim').onclick=closeGuide;
+renderGuide();
+syncGuide();
 
 /* ============ boot ============ */
 const loaded=load();
