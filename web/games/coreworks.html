@@ -101,6 +101,8 @@ text{font-family:var(--mono)}
 .sock.empty .mk{display:none}
 .stageLbl{font-size:8.5px;fill:var(--chalk);letter-spacing:.22em;opacity:.85}
 .flowArrow{fill:var(--work)}
+.bp02hidden{display:none}
+.bp02tag{font-size:6px;fill:var(--work);letter-spacing:.1em;opacity:.8}
 @media (prefers-reduced-motion: reduce){.fluxline{animation:none}}
 /* info strip */
 #info{
@@ -417,6 +419,29 @@ svg .tut-glow,.sock.tut-glow .shape{filter:drop-shadow(0 0 7px rgba(255,179,71,.
     <text class="anno-code" x="30" y="408">G-01</text>
     <text class="anno-code" x="70" y="408">G-02</text>
 
+    <!-- ===== BLUEPRINT 02: second parallel CHARGE→RESONANCE→CONVERSION tap ===== -->
+    <!-- third coil (CHARGE·B) -->
+    <g class="sock empty bp02hidden" id="sk_c3">
+      <circle class="shape" cx="312" cy="150" r="15"/>
+      <text class="glyph" x="312" y="147">COIL</text>
+      <text class="mk" x="312" y="160"></text>
+    </g>
+    <!-- third fork (RESONANCE·B) -->
+    <g class="sock empty bp02hidden" id="sk_f3">
+      <circle class="shape" cx="300" cy="226" r="13"/>
+      <text class="glyph" x="300" y="223">FORK</text>
+      <text class="mk" x="300" y="236"></text>
+    </g>
+    <!-- Converter B (CONVERSION·B) -->
+    <g class="sock empty bp02hidden" id="sk_s04b">
+      <rect class="shape" x="256" y="356" width="74" height="48" rx="7"/>
+      <line x1="276" y1="364" x2="276" y2="396" stroke="var(--line)" stroke-width="1"/>
+      <text class="glyph" x="293" y="375">▦</text>
+      <text class="mk" x="293" y="394">CONV B</text>
+    </g>
+    <path class="pipe bp02hidden" id="bp2pipe" d="M248 380 H 256"/>
+    <text class="anno-code bp02hidden" id="bp2lbl" x="262" y="350">S-04·B</text>
+
     <!-- work out -->
     <polygon class="flowArrow" points="172,442 188,442 180,456"/>
     <text x="180" y="472" text-anchor="middle" style="font-size:9px;fill:var(--work);letter-spacing:.2em">WORK OUT · vim</text>
@@ -446,9 +471,14 @@ svg .tut-glow,.sock.tut-glow .shape{filter:drop-shadow(0 0 7px rgba(255,179,71,.
       <text class="axlbl" x="6" y="14" transform="rotate(-90 10 50)" style="letter-spacing:.1em">vim</text>
     </svg>
     <div class="dialrow">
-      <span class="dlbl">FREQ<br>DIAL</span>
+      <span class="dlbl">FREQ<br>DIAL<br><span style="color:var(--flux)">A</span></span>
       <input type="range" id="dial" min="20" max="60" step="1" value="42">
       <span class="dv" id="dialVal">42 Hz</span>
+    </div>
+    <div class="dialrow" id="dialrowB" style="display:none">
+      <span class="dlbl">FREQ<br>DIAL<br><span style="color:var(--work)">B</span></span>
+      <input type="range" id="dial2" min="20" max="60" step="1" value="74">
+      <span class="dv" id="dial2Val" style="color:var(--work)">74 Hz</span>
     </div>
     <div id="stages">
       <div class="stg" id="stg_in"><span class="sn">INTAKE</span><span class="sv" id="sv_in">—</span></div>
@@ -479,6 +509,8 @@ svg .tut-glow,.sock.tut-glow .shape{filter:drop-shadow(0 0 7px rgba(255,179,71,.
 
   <div class="sect-lbl"><span>Campaign Rewards</span></div>
   <div id="rewards"></div>
+
+  <div id="bp02panel" style="display:none"></div>
 
   <div style="display:flex;justify-content:center;padding:6px 0 10px">
     <button class="small danger" id="scrapBtn">SCRAP THIS MACHINE</button>
@@ -584,8 +616,15 @@ const SOCKDEF={
   r02:{cl:'gov',code:'R-02',stage:'REGULATION'},
   g1:{cl:'glass',code:'G-01',stage:'GAUGE'},
   g2:{cl:'glass',code:'G-02',stage:'GAUGE'},
+  /* BLUEPRINT 02 — second parallel CONVERSION bank (unlocked + installed late) */
+  c3:{cl:'coil',code:'S-02c·B',stage:'CHARGE',bp02:true},
+  f3:{cl:'fork',code:'S-03f·B',stage:'RESONANCE',bp02:true},
+  s04b:{cl:'conv',code:'S-04·B',stage:'CONVERSION',bp02:true},
 };
 const SOCKIDS=Object.keys(SOCKDEF);
+/* sockets that only exist once Blueprint 02 is installed */
+function bp02Installed(){return !!(S&&S.bp02);}
+function activeSockIds(){return SOCKIDS.filter(k=>!SOCKDEF[k].bp02||bp02Installed());}
 const STAGES=['INTAKE','CHARGE','RESONANCE','CONVERSION','REGULATION'];
 
 /* ============ state ============ */
@@ -595,10 +634,10 @@ function freshState(){
   return{
     inst:{s01a:{id:'vane1'},s01b:null,s02:{id:'ch1'},c1:null,c2:null,
           s03:{id:'res1'},f1:null,f2:null,s04:{id:'conv1'},r01:{id:'sink1'},r02:null,
-          g1:null,g2:null},
+          g1:null,g2:null,c3:null,f3:null,s04b:null},
     inv:[],
     money:8, round:1, contractsDone:0, streak:0, score:0, raw:0, lastVim:0,
-    f:42,
+    f:42, f2:74, bp02:false,
     board:[], picked:null, forfeit:[false,false,false],
     shop:[], sold:[false,false,false,false],
     sel:null, running:false,
@@ -612,13 +651,21 @@ function fresh(){
   _raw=mulberry32(strSeed(seedString));
 }
 
-/* campaign tiers */
+/* campaign tiers — single source of truth for every unlock gate (Bug fix: the
+   shop's Mk gate used to hard-code 3/7 separately from this table, so the table
+   and the actual gate could silently disagree; now mkUnlocked() reads TIERS). */
 const TIERS=[
   {at:3,key:'mk2',label:'MK II PARTS'},
-  {at:7,key:'mk3',label:'MK III PARTS'},
-  {at:12,key:'bp02',label:'BLUEPRINT 02 — awaiting drafting',neverUnlocks:true},
+  {at:8,key:'mk3',label:'MK III PARTS'},
+  {at:14,key:'bp02',label:'BLUEPRINT 02 — SECOND CORE'},
 ];
-function mkUnlocked(){return 1+(S.contractsDone>=3?1:0)+(S.contractsDone>=7?1:0)}
+function tierAt(key){const t=TIERS.find(t=>t.key===key);return t?t.at:Infinity}
+/* how many Mk tiers the shop may offer, driven entirely by TIERS thresholds */
+function mkUnlocked(){return 1+(S.contractsDone>=tierAt('mk2')?1:0)+(S.contractsDone>=tierAt('mk3')?1:0)}
+function bp02Unlocked(){return S.contractsDone>=tierAt('bp02')}
+/* Blueprint 02 install: escalating fixed price (Bible §3 board-expansion shape),
+   never a shop item; a deliberate forecasting purchase. */
+const BP02_COST=60;
 
 const $=id=>document.getElementById(id);
 
@@ -631,7 +678,7 @@ function save(){
   meta.updated=Date.now();
   try{
     localStorage.setItem(saveKey,JSON.stringify({
-      schema:1,
+      schema:2,
       state:Object.assign({},S,{sel:null,running:false}),
       settings:{mode:settings.mode},
       meta,
@@ -644,7 +691,7 @@ function load(){
   if(!raw)return 'none';
   let d=null;
   try{d=JSON.parse(raw)}catch(e){return 'bad'}
-  if(!d||d.schema!==1||!d.state||!d.settings)return 'bad';
+  if(!d||d.schema!==2||!d.state||!d.settings)return 'bad';
   if(!d.meta||d.meta.seed!==seedString)return 'stale'; /* new seed (new day) → new machine */
   S=d.state;S.sel=null;S.running=false;
   settings=d.settings;meta=d.meta;
@@ -662,14 +709,17 @@ function eOf(f,a,b){
   const d=f<a?a-f:f-b;
   return Math.max(0.2,1-(d/10)*0.8);     /* linear falloff to 0.2 across ±10 Hz outside the band */
 }
-function simCore(m,f,relax){
+/* f = primary dial (Converter A); f2 = secondary dial (Converter B, Blueprint 02). */
+function simCore(m,f,relax,f2){
+  if(f2==null)f2=f;
   let D=m.vanes.reduce((a,v)=>a+v.draw,0);                       // Σ vane.draw
   const chCap=m.ch?m.ch.cap:0;
   if(relax==='INTAKE')D=Math.max(D,chCap);
   let F=m.ch?Math.min(D,chCap):0;                                 // min(D, chamber.cap)
   if(relax==='CHARGE')F=D;
   const P=(m.ch?m.ch.base:0)+m.coils.reduce((a,c)=>a+c.p,0);      // chamber.base + Σ coil.pressure
-  const H=m.coils.reduce((a,c)=>a+c.h,0)+(m.res?m.res.hc*f:0);    // Σ part.heat(f)
+  // coils flat; resonator scales with primary dial; Converter B taps resonance too (half coeff)
+  const H=m.coils.reduce((a,c)=>a+c.h,0)+(m.res?m.res.hc*f:0)+(m.convB&&m.res?m.res.hc*f2*0.5:0);
   const sinkCap=m.sink?m.sink.cap:0;
   let T=H<=sinkCap?1:(H>0?sinkCap/H:1);                           // thermal throttle
   if(m.gov)T=Math.max(T,m.gov.tf);                                // governor T floor
@@ -680,49 +730,63 @@ function simCore(m,f,relax){
   const M=(red>0?(red-f)/red*100:0)+stab;                         // stability margin
   let shud=m.res?(f>red||M<0):false;
   if(relax==='RESONANCE')shud=false;
+  // Converter A
   let e=m.conv?eOf(f,m.conv.a,m.conv.b):0;
   let ccap=m.conv?m.conv.cap:0,crate=m.conv?m.conv.rate:0;
   if(relax==='CONVERSION'){e=m.conv?1:0;ccap=Infinity}
-  const vim=Math.floor(Math.min(Q,ccap)*e*crate*(shud?0.45:1));
+  const vimA=Math.floor(Math.min(Q,ccap)*e*crate*(shud?0.45:1));
+  // Converter B (Blueprint 02): second parallel tap of the same charge Q at its own dial f2
+  let vimB=0,eB=0,shudB=false;
+  if(m.convB){
+    shudB=(f2>red||M<0);
+    if(relax==='RESONANCE')shudB=false;
+    eB=eOf(f2,m.convB.a,m.convB.b);
+    let bcap=m.convB.cap;
+    if(relax==='CONVERSION'){eB=1;bcap=Infinity}
+    vimB=Math.floor(Math.min(Q,bcap)*eB*m.convB.rate*(shudB?0.45:1));
+  }
+  const vim=vimA+vimB;
   const heatPct=sinkCap>0?H/sinkCap*100:(H>0?9999:0);
-  return{D,F,P,H,T,Q,M,shud,e,vim,heatPct,chCap,sinkCap,red,stab};
+  return{D,F,P,H,T,Q,M,shud,e,vim,vimA,vimB,eB,shudB,heatPct,chCap,sinkCap,red,stab};
 }
 function machineSpec(inst){
   const g=k=>inst[k]?CAT[inst[k].id]:null;
   return{
     vanes:[g('s01a'),g('s01b')].filter(Boolean),
     ch:g('s02'),
-    coils:[g('c1'),g('c2')].filter(Boolean),
+    coils:[g('c1'),g('c2'),g('c3')].filter(Boolean),
     res:g('s03'),
-    forks:[g('f1'),g('f2')].filter(Boolean),
+    forks:[g('f1'),g('f2'),g('f3')].filter(Boolean),
     conv:g('s04'),
+    convB:g('s04b'),
     sink:g('r01'),
     gov:g('r02'),
   };
 }
 /* full bench reading: base sim + diagnoses (worst first) + bottleneck by finite difference */
-function bench(m,f){
-  const r=simCore(m,f,null);
+function bench(m,f,f2){
+  const r=simCore(m,f,null,f2);
   const diag=[];
   if(m.ch&&r.D<r.chCap*0.6)
-    diag.push({k:'STARVED',sev:simCore(m,f,'INTAKE').vim-r.vim,
+    diag.push({k:'STARVED',sev:simCore(m,f,'INTAKE',f2).vim-r.vim,
       msg:'chamber underfed — drawing <b>'+r.D+' fl/s</b> against a '+r.chCap+' fl/s chamber (floor '+(r.chCap*0.6).toFixed(0)+'). Points at the <b>vanes</b>.'});
-  if(m.conv&&r.Q>m.conv.cap){
-    const over=Math.floor((r.Q-m.conv.cap)*r.e*m.conv.rate*(r.shud?0.45:1));
-    diag.push({k:'CHOKED',sev:over,
-      msg:'<b>'+over+' vim-equivalent</b> overflowing past converter cap '+m.conv.cap+'. Points at the <b>converter</b>.'});
-  }
+  // CHOKED: either converter overflowing its cap (vim-equivalent across both banks)
+  const capA=m.conv&&r.Q>m.conv.cap?Math.floor((r.Q-m.conv.cap)*r.e*m.conv.rate*(r.shud?0.45:1)):0;
+  const capB=m.convB&&r.Q>m.convB.cap?Math.floor((r.Q-m.convB.cap)*r.eB*m.convB.rate*(r.shudB?0.45:1)):0;
+  if(capA+capB>0)
+    diag.push({k:'CHOKED',sev:capA+capB,
+      msg:'<b>'+(capA+capB)+' vim-equivalent</b> overflowing past converter cap'+(m.convB?'s':' '+m.conv.cap)+'. Points at the <b>converter'+(m.convB?'s':'')+'</b>.'});
   if(r.T<1)
-    diag.push({k:'OVERHEAT',sev:simCore(m,f,'REGULATION').vim-r.vim,
+    diag.push({k:'OVERHEAT',sev:simCore(m,f,'REGULATION',f2).vim-r.vim,
       msg:'<b>'+r.H.toFixed(1)+' heat/s</b> vs sink capacity '+r.sinkCap+' — throttled to '+(r.T*100).toFixed(0)+'%. Points at the <b>sink / coils</b>.'});
-  if(r.shud)
-    diag.push({k:'SHUDDER',sev:simCore(m,f,'RESONANCE').vim-r.vim,
-      msg:(f>r.red?'dial past redline '+r.red+' Hz':'stability margin '+r.M.toFixed(1)+' &lt; 0')+' — output ×0.45. Points at the <b>resonator / forks</b>.'});
+  if(r.shud||r.shudB)
+    diag.push({k:'SHUDDER',sev:simCore(m,f,'RESONANCE',f2).vim-r.vim,
+      msg:((r.shud&&f>r.red)||(r.shudB&&f2>r.red)?'dial past redline '+r.red+' Hz':'stability margin '+r.M.toFixed(1)+' &lt; 0')+' — output ×0.45. Points at the <b>resonator / forks</b>.'});
   diag.sort((a,b)=>b.sev-a.sev);                           /* worst first */
   /* bottleneck: relax each stage, biggest vim gain is the binding constraint */
   let bn=null,best=0;
   for(const st of STAGES){
-    const d=simCore(m,f,st).vim-r.vim;
+    const d=simCore(m,f,st,f2).vim-r.vim;
     if(d>best){best=d;bn=st}
   }
   return Object.assign(r,{diag,bn,bnGain:best});
@@ -736,7 +800,29 @@ const CLAUSES=[
   {id:'st40',txt:'deliver with stability ≥ 40',pay:2},
   {id:'dbl',txt:'double pay, single bench pull (no retry that round)',pay:0},
 ];
-function targetBase(n){return Math.round(20*Math.pow(1.5,n-1))}
+/* ============ contract-target curve — soft-knee, one tunable function ============
+   T(n) = BASE × EARLY^(min(n,KNEE)-1) × TAIL^(max(0, n-KNEE))
+   A geometric ramp from BASE=20 up to the KNEE, then a softer TAIL so a well-forecasted,
+   tiered-and-expanded core keeps pace past round 100 while a passive single-Mk-I machine
+   walls in the twenties. EARLY/KNEE/TAIL were tuned BY the dual-bot acceptance harness:
+   EARLY and TAIL come out gentler than a pure-geometric 1.5 because the machine's MAX
+   deliverable vim is finite (no pay-to-win, Bible §4) — a single core hard-caps at the
+   converter's cap×rate, and even a fully tiered Twin-Core (Blueprint 02) tops out near
+   432 vim. The target must therefore stay below that ceiling at round 100, which bounds
+   the achievable growth rate. The shape (steep early, soft knee, accelerating) is kept. */
+const CURVE={BASE:20,EARLY:1.12,KNEE:8,TAIL:1.018};
+function targetRaw(n){
+  const c=CURVE;
+  return c.BASE*Math.pow(c.EARLY,Math.min(n,c.KNEE)-1)*Math.pow(c.TAIL,Math.max(0,n-c.KNEE));
+}
+/* integer-rounded AND guaranteed strictly increasing (the gentle tail can otherwise
+   round two adjacent rounds to the same integer). Deterministic, depends only on n. */
+function targetBase(n){
+  let prev=Math.round(targetRaw(1));
+  if(n<=1)return prev;
+  for(let k=2;k<=n;k++){const v=Math.max(Math.round(targetRaw(k)),prev+1);prev=v;}
+  return prev;
+}
 function rollBoard(){
   const n=S.round,base=targetBase(n);
   const profiles=[[0.85,0],[1.0,2],[1.3,5]];
@@ -759,7 +845,7 @@ function clauseTxt(id){const c=CLAUSES.find(c=>c.id===id);return c?c.txt:null}
 function clauseOK(id,r,f){
   if(!id)return true;
   if(id==='lo50')return f<50;
-  if(id==='noc')return !S.inst.c1&&!S.inst.c2;
+  if(id==='noc')return !S.inst.c1&&!S.inst.c2&&!S.inst.c3;
   if(id==='h60')return r.heatPct<60;
   if(id==='st40')return r.M>=40;
   return true; /* dbl: enforced via forfeit, not the reading */
@@ -835,7 +921,7 @@ function vis(){
 
 /* ============ render ============ */
 const SHORT={vane:'VANE',chamber:'CHMBR',coil:'COIL',res:'RES',fork:'FORK',conv:'CONV',sink:'SINK',gov:'GOV',glass:'GLASS'};
-function curReading(){return bench(machineSpec(S.inst),S.f)}
+function curReading(){return bench(machineSpec(S.inst),S.f,S.f2)}
 function fmt1(x){return (Math.round(x*10)/10).toString()}
 function render(){
   const c=contract(),v=vis(),r=curReading();
@@ -847,8 +933,8 @@ function render(){
   $('dayTag').textContent='DAY '+dayNum+(ctx&&ctx.leagueLabel?' · '+ctx.leagueLabel:'');
   $('modeBadge').textContent=settings.mode?settings.mode+' ×'+MULT[settings.mode]:'—';
   const next=TIERS.find(t=>S.contractsDone<t.at);
-  $('cmpTier').textContent=mkUnlocked()>=3?'MK III ERA':mkUnlocked()>=2?'MK II ERA':'BLUEPRINT 01';
-  $('cmpNext').textContent=next?S.contractsDone+'/'+next.at+' → '+(next.neverUnlocks?'BLUEPRINT 02':next.label):S.contractsDone+' delivered';
+  $('cmpTier').textContent=bp02Installed()?'TWIN-CORE':bp02Unlocked()?'BLUEPRINT 02':mkUnlocked()>=3?'MK III ERA':mkUnlocked()>=2?'MK II ERA':'BLUEPRINT 01';
+  $('cmpNext').textContent=next?S.contractsDone+'/'+next.at+' → '+next.label:S.contractsDone+' delivered';
   $('cmpFill').style.width=(next?Math.min(100,100*S.contractsDone/next.at):100)+'%';
   /* contract strip */
   if(c){
@@ -874,8 +960,11 @@ function render(){
   });
   $('boardNote').textContent=c?'signed — pull when ready':'pick one';
   /* sockets */
+  const bp02=bp02Installed();
+  for(const id of['sk_c3','sk_f3','sk_s04b','bp2pipe','bp2lbl']){const e=$(id);if(e)e.classList.toggle('bp02hidden',!bp02);}
   for(const k of SOCKIDS){
     const el=$('sk_'+k);if(!el)continue;
+    if(SOCKDEF[k].bp02&&!bp02)continue;
     const p=S.inst[k],def=p?CAT[p.id]:null;
     el.classList.toggle('empty',!p);
     el.classList.toggle('sel',!!(S.sel&&S.sel.type==='sock'&&S.sel.k===k));
@@ -898,6 +987,16 @@ function render(){
   }else{
     dial.disabled=true;$('dialVal').textContent='— Hz';
     $('benchNote').textContent='no resonator — dial dead';
+  }
+  /* secondary dial — only present once Blueprint 02's Converter B is installed */
+  const dialRowB=$('dialrowB'),hasB=!!S.inst.s04b;
+  if(dialRowB){
+    dialRowB.style.display=hasB?'':'none';
+    if(hasB&&res){
+      const d2=$('dial2');
+      d2.disabled=S.running;d2.min=res.lo;d2.max=res.hi;d2.value=S.f2;
+      $('dial2Val').textContent=S.f2+' Hz';
+    }
   }
   renderCurve(r,v,res);
   /* stage readouts */
@@ -940,7 +1039,7 @@ function render(){
     chip.innerHTML='<b style="color:var(--work)">BALANCED</b> — no single stage is binding at this dial.';
   }else chip.style.display='none';
   /* drawers */
-  renderInv();renderShop();renderRewards();renderInfo(r);
+  renderInv();renderShop();renderRewards();renderBp02();renderInfo(r);
   $('pullBtn').disabled=S.running||!c||(window.TUT&&TUT.on&&TUT.step<TUT_PULL_STEP);
   $('rerollBtn').disabled=S.money<2||S.running;
   if(window.tutTick)tutTick();
@@ -948,17 +1047,24 @@ function render(){
 function renderCurve(r,v,res){
   const g=$('curveG');if(!g)return;
   const conv=S.inst.s04?CAT[S.inst.s04.id]:null;
+  const convB=S.inst.s04b?CAT[S.inst.s04b.id]:null;
   let h='';
   if(res){
     const lo=res.lo,hi=res.hi,X=f=>28+(f-lo)/(hi-lo)*296;
     const m=machineSpec(S.inst);
+    /* plot Converter A's vim across the primary dial, holding B's dial fixed */
     let vmax=1;const pts=[];
-    for(let f=lo;f<=hi;f++){const vv=simCore(m,f,null).vim;pts.push([f,vv]);if(vv>vmax)vmax=vv}
+    for(let f=lo;f<=hi;f++){const vv=simCore(m,f,null,S.f2).vim;pts.push([f,vv]);if(vv>vmax)vmax=vv}
     const Y=vv=>92-(vv/vmax)*78;
     if(conv){
       const a=Math.max(lo,conv.a),b=Math.min(hi,conv.b);
       if(b>a)h+='<rect class="band" x="'+X(a)+'" y="8" width="'+(X(b)-X(a))+'" height="84"/>'
-        +'<text class="bandlbl" x="'+(X(a)+3)+'" y="18">CONVERTER BAND</text>';
+        +'<text class="bandlbl" x="'+(X(a)+3)+'" y="18">BAND A</text>';
+    }
+    if(convB){
+      const a=Math.max(lo,convB.a),b=Math.min(hi,convB.b);
+      if(b>a)h+='<rect class="band" x="'+X(a)+'" y="8" width="'+(X(b)-X(a))+'" height="84" style="fill:rgba(127,217,139,.06);stroke-dasharray:1 3"/>'
+        +'<text class="bandlbl" x="'+(X(a)+3)+'" y="28" style="opacity:.7">BAND B</text>';
     }
     if(v.curve){
       const path=w=>w.map((p,i)=>(i?'L':'M')+X(p[0]).toFixed(1)+' '+Y(p[1]).toFixed(1)).join(' ');
@@ -969,6 +1075,7 @@ function renderCurve(r,v,res){
       }
       h+='<circle class="oppt" cx="'+X(S.f)+'" cy="'+Y(r.vim)+'" r="3.5"/>'
         +'<text class="anno-code" x="'+Math.min(270,X(S.f)+5)+'" y="'+Math.max(15,Y(r.vim)-6)+'">'+S.f+' Hz · '+r.vim+'</text>';
+      if(convB)h+='<circle class="oppt" cx="'+X(S.f2)+'" cy="88" r="2.6" style="fill:var(--work)"/>';
     }else{
       h+='<circle class="oppt" cx="'+X(S.f)+'" cy="88" r="3.5"/>'
         +'<text class="anno-code" x="'+Math.min(270,X(S.f)+5)+'" y="82">'+S.f+' Hz'+(v.ghost?' · '+r.vim:'')+'</text>';
@@ -1011,12 +1118,32 @@ function renderShop(){
 function renderRewards(){
   const el=$('rewards');el.innerHTML='';
   for(const t of TIERS){
-    const got=!t.neverUnlocks&&S.contractsDone>=t.at;
+    const got=S.contractsDone>=t.at;
     const d=document.createElement('div');
     d.className='rw '+(got?'got':'lock');
-    d.innerHTML='<b>'+t.label+'</b><span class="rtag">'+(got?'UNLOCKED':t.neverUnlocks?'LOCKED':S.contractsDone+'/'+t.at)+'</span>';
+    d.innerHTML='<b>'+t.label+'</b><span class="rtag">'+(got?'UNLOCKED':S.contractsDone+'/'+t.at)+'</span>';
     el.appendChild(d);
   }
+}
+function renderBp02(){
+  const el=$('bp02panel');
+  /* shown once the campaign unlocks Blueprint 02; hidden before that and after install */
+  if(!bp02Unlocked()||bp02Installed()){el.style.display='none';return;}
+  el.style.display='';
+  const can=S.money>=BP02_COST&&!S.running;
+  el.innerHTML='<div class="bottleneck" style="border-left-color:var(--work);background:rgba(127,217,139,.07)">'
+    +'<b style="color:var(--work)">BLUEPRINT 02 — SECOND CORE</b> · install a parallel CONVERSION bank '
+    +'(Converter B + dial B, plus a 3rd coil &amp; fork socket). Its vim <b>adds</b> to the first core, '
+    +'breaking the single-converter ceiling. One-time install <b>$'+BP02_COST+'</b>.'
+    +'<div style="margin-top:7px"><button class="small" id="bp02Btn"'+(can?'':' disabled')+'>INSTALL · $'+BP02_COST+'</button></div></div>';
+  const b=$('bp02Btn');if(b)b.onclick=installBp02;
+}
+function installBp02(){
+  if(S.running||S.bp02||!bp02Unlocked()||S.money<BP02_COST)return;
+  S.money-=BP02_COST;S.bp02=true;
+  clampDial();
+  logMove({t:'bp02'});
+  save();render();
 }
 function renderInfo(r){
   const t=$('infoText'),a=$('infoAct');a.innerHTML='';
@@ -1065,7 +1192,10 @@ function renderInfo(r){
 /* ============ interactions ============ */
 function clampDial(){
   const res=S.inst.s03?CAT[S.inst.s03.id]:null;
-  if(res)S.f=Math.max(res.lo,Math.min(res.hi,S.f));
+  if(res){
+    S.f=Math.max(res.lo,Math.min(res.hi,S.f));
+    S.f2=Math.max(res.lo,Math.min(res.hi,S.f2));
+  }
 }
 /* transient one-render note shown in the info strip (e.g. "wrong socket class").
    never persisted, never blocks; consumed by the next renderInfo so nothing sticks. */
@@ -1131,10 +1261,16 @@ function sellInv(i){
   logMove({t:'sell',from:'inv',id:p.id});
   save();render();
 }
+/* a part's Mk tier must be campaign-unlocked to be purchasable (Mk I always allowed).
+   Belt-and-suspenders: the shop roll already gates which tiers it offers, but this makes
+   the gate authoritative at the point of purchase too, so no offered/guaranteed slot can
+   ever bypass it. */
+function tierPurchasable(def){return !def.mk||def.mk<=mkUnlocked();}
 function buy(i){
   const id=S.shop[i];if(!id)return;
   const def=CAT[id];
   if(S.money<def.cost||S.sold[i]||S.running)return;
+  if(!tierPurchasable(def)){_flashNote='<b>✗ Locked tier</b> — deliver more contracts to unlock this Mk.';render();return;}
   S.money-=def.cost;S.sold[i]=true;
   const p={id};if(def.cl==='glass')p.stage='INTAKE';
   S.inv.push(p);
@@ -1158,6 +1294,8 @@ $('rerollBtn').onclick=()=>{
 for(const k of SOCKIDS){const el=$('sk_'+k);if(el)el.addEventListener('click',()=>onSock(k))}
 $('dial').addEventListener('input',e=>{S.f=+e.target.value;S.last=null;render()});
 $('dial').addEventListener('change',e=>{S.f=+e.target.value;logMove({t:'dial',f:S.f});save();render()});
+$('dial2').addEventListener('input',e=>{S.f2=+e.target.value;S.last=null;render()});
+$('dial2').addEventListener('change',e=>{S.f2=+e.target.value;logMove({t:'dial2',f:S.f2});save();render()});
 
 /* ============ BENCH PULL (the commit) ============ */
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -1168,13 +1306,13 @@ async function benchPull(){
   S.running=true;S.sel=null;
   logMove({t:'pull',f:S.f});
   render();
-  const r=bench(machineSpec(S.inst),S.f);
+  const r=bench(machineSpec(S.inst),S.f,S.f2);
   /* causal sweep: intake → charge → resonance → conversion (then regulation glow) */
   const seq=[
     [['s01a','s01b'],['fx1','fx1b']],
-    [['s02','c1','c2'],['fx2']],
-    [['s03','f1','f2'],['fx3']],
-    [['s04'],['fx4']],
+    [['s02','c1','c2','c3'],['fx2']],
+    [['s03','f1','f2','f3'],['fx3']],
+    [['s04','s04b'],['fx4']],
     [['r01','r02'],[]],
   ];
   for(const[socks,fxs]of seq){
@@ -1201,7 +1339,7 @@ async function benchPull(){
   let body='<table class="rtbl">'
     +'<tr><td>INTAKE</td><td>D '+r.D+' fl/s</td><td>CHARGE</td><td>F '+r.F+' · P ×'+fmt1(r.P)+'</td></tr>'
     +'<tr><td>RESONANCE</td><td>f '+S.f+' Hz · M '+fmt1(r.M)+'</td><td>REGULATION</td><td>H '+fmt1(r.H)+'/'+r.sinkCap+' · T '+(r.T*100).toFixed(0)+'%</td></tr>'
-    +'<tr><td>CONVERSION</td><td>Q '+fmt1(r.Q)+' · e '+r.e.toFixed(2)+'</td><td>OUTPUT</td><td><b>'+r.vim+' vim</b></td></tr></table>'
+    +'<tr><td>CONVERSION</td><td>Q '+fmt1(r.Q)+' · e '+r.e.toFixed(2)+(S.inst.s04b?' · B e '+r.eB.toFixed(2):'')+'</td><td>OUTPUT</td><td><b>'+r.vim+' vim</b>'+(S.inst.s04b?' ('+r.vimA+'+'+r.vimB+')':'')+'</td></tr></table>'
     +check(okVim,'delivered <b>'+r.vim+'</b> vim against <b>'+c.target+'</b>')
     +check(okHeat,'heat <b>'+Math.round(r.heatPct)+'%</b> vs limit '+c.maxHeat+'%')
     +(c.clause?check(okClause,'clause: '+clauseTxt(c.clause)):'');
@@ -1216,8 +1354,11 @@ async function benchPull(){
     S.money+=income;
     const before=S.contractsDone;S.contractsDone+=1;
     let unl='';
-    for(const t of TIERS)if(!t.neverUnlocks&&before<t.at&&S.contractsDone>=t.at)unl+='<p><b style="color:var(--work)">CAMPAIGN — '+t.label+' UNLOCKED</b> in the shop.</p>';
-    if(before<12&&S.contractsDone>=12)unl+='<p><b>BLUEPRINT 02 — awaiting drafting.</b> The drafting office has not released it.</p>';
+    for(const t of TIERS)if(before<t.at&&S.contractsDone>=t.at){
+      unl+=t.key==='bp02'
+        ? '<p><b style="color:var(--work)">CAMPAIGN — BLUEPRINT 02 RELEASED.</b> The second-core install is now available below ($'+BP02_COST+').</p>'
+        : '<p><b style="color:var(--work)">CAMPAIGN — '+t.label+' UNLOCKED</b> in the shop.</p>';
+    }
     $('resTitle').innerHTML='CONTRACT <span>FULFILLED</span>';
     body+='<p>Paid <b>$'+income+'</b> ($'+c.pay+' contract'+(surplus?' + $'+surplus+' surplus':'')
       +(interest?' + $'+interest+' interest':'')+(streakB?' + $'+streakB+' streak':'')
@@ -1330,7 +1471,7 @@ const TSTEPS=[
    hi:'#sk_c1'},
   {t:()=>'The <b>Sink R-01</b> sheds heat; if heat beats its capacity the whole machine throttles. <b>Forks</b> (S-03f) and the <b>Governor R-02</b> buy <b>stability margin</b> so you can run nearer the redline without a shudder.',
    hi:'#sk_r01'},
-  {t:()=>'Upgrades come in <b>Mk I/II/III</b>. Higher tiers shift the <b class="tn">optimal frequency upward</b> — a fast resonator with a low converter band overshoots and chokes. Matching tiers across stages is where the engineering lives.',
+  {t:()=>'Upgrades come in <b>Mk I/II/III</b>, unlocked as you deliver contracts. Higher tiers shift the <b class="tn">optimal frequency upward</b> and raise your vim ceiling — a fast resonator with a low converter band overshoots and chokes, so match tiers across stages. <b>Forecast</b>: buy the next tier <b>before</b> the targets demand it. Far later the campaign releases <b class="tn">Blueprint 02</b> — a second Converter bank whose vim <b>adds</b> to the first, breaking the single-core ceiling for the long climb.',
    hi:'#machineWrap'},
   /* PHASE 5 — the four failure modes + bottleneck */
   {t:()=>'Four named failures. <b class="tw">STARVED</b>: the chamber is underfed — add or upgrade <b>vanes</b>. <b class="tw">CHOKED</b>: charge overflows the converter cap — bigger converter or less pressure.',
