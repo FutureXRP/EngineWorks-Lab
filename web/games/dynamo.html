@@ -168,7 +168,7 @@ button.danger{border-color:#6B3A33;color:var(--red)}
   <div class="sect-lbl"><span>Engine Floor</span><button class="small" id="rowBtn">+ROW $12</button></div>
   <div id="grid"></div>
 
-  <div id="info"><span id="infoText">Generators feed one <b>shared pool</b>; converters drink it in <b>reading order</b>. Adjacency is orthogonal. Tap a part, then tap a cell to move it.</span>
+  <div id="info"><span id="infoText">Generators feed one <b>shared pool</b>; converters drink it in <b>reading order</b>. Adjacency is orthogonal. Tap a part, then tap an <b>empty cell</b> to place it; tap a placed part to select it.</span>
     <span class="act" id="infoAct"></span>
   </div>
 
@@ -486,7 +486,7 @@ function render(){
 }
 function renderInfo(){
   const t=$('infoText'),a=$('infoAct');a.innerHTML='';
-  if(!S.sel){t.innerHTML='Generators feed one <b>shared pool</b>; converters drink it in <b>reading order</b>. Adjacency is orthogonal. Tap a part, then tap a cell to move it.';return}
+  if(!S.sel){t.innerHTML='Generators feed one <b>shared pool</b>; converters drink it in <b>reading order</b>. Adjacency is orthogonal. Tap a part, then tap an <b>empty cell</b> to place it; tap a placed part to select it.';return}
   const{from,idx}=S.sel;
   const p=from==='shop'?{id:S.shop[idx]}:from==='bench'?S.bench[idx]:S.grid[idx];
   if(!p){t.innerHTML='';return}
@@ -506,23 +506,27 @@ function renderInfo(){
 /* ============ interactions ============ */
 function onPiece(from,idx){
   if(S.running)return;
-  if(S.sel&&S.sel.from===from&&S.sel.idx===idx){S.sel=null;render();return} /* tap again = deselect */
-  if(S.sel&&S.sel.from!=='shop'&&from==='grid'){moveSelTo(idx);return}
+  /* re-tap the held item = deselect (DYNAMO has no rotation) */
+  if(S.sel&&S.sel.from===from&&S.sel.idx===idx){S.sel=null;render();return}
+  /* tapping a piece — bench, shop, or a placed grid piece — only ever SELECTS it.
+     It never moves/swaps the currently-held piece onto this one. */
   S.sel={from,idx};render();
 }
 function onCell(i){
   if(S.running)return;
-  if(!S.sel){render();return}
-  if(S.sel.from==='shop')return;
+  /* empty cells are the ONLY drop targets */
+  if(S.grid[i]){onPiece('grid',i);return}   /* occupied: defer to piece-select (no swap) */
+  if(!S.sel||S.sel.from==='shop'){render();return}  /* nothing placeable held = no-op */
   moveSelTo(i);
 }
+/* moves the held bench/grid item into an EMPTY cell i (callers guarantee S.grid[i] is empty) */
 function moveSelTo(i){
   const{from,idx}=S.sel;
   if(from==='grid'&&idx===i){S.sel=null;render();return}
   const moving=from==='grid'?S.grid[idx]:S.bench[idx];
-  const target=S.grid[i];
-  if(from==='grid'){S.grid[idx]=target||null}
-  else{S.bench.splice(idx,1);if(target)S.bench.push(target)}
+  if(!moving){S.sel=null;render();return}
+  if(from==='grid'){S.grid[idx]=null}        /* origin empties */
+  else{S.bench.splice(idx,1)}                  /* leaves the bench */
   S.grid[i]=moving;
   S.sel={from:'grid',idx:i};
   logMove({t:'place',from,fi:idx,to:i});
@@ -745,13 +749,13 @@ const TSTEPS=[
   {t:()=>'Nothing is final until you press <b>RUN ENGINE</b> at the bottom — that\'s the commit. A run resolves in order: stored charge → generators fire → converters drink the pool → capacitors bank leftovers → the rest is WASTED. Let\'s wire one. <b>NEXT.</b>',
    hi:'#runBtn',lockRun:true},
   /* ---- PHASE 2: the core loop, hands-on & GATED ---- */
-  {t:()=>'Hands-on now. Generators make ⚡ charge into one <b>shared pool</b>. Tap a <b>Dynamo ⚙</b> on your bench, then tap a grid cell to place it.',
+  {t:()=>'Hands-on now. Generators make ⚡ charge into one <b>shared pool</b>. Tap a <b>Dynamo ⚙</b> on your bench, then tap an <b>empty grid cell</b> to place it.',
    done:()=>gridCount('dyn')>=1,gate:true,hi:'#bench',lockRun:true},
   {t:()=>'Place your <b>second Dynamo ⚙</b> — leave a gap so one more part can sit touching <b>both</b> of them.',
    done:()=>gridCount('dyn')>=2,gate:true,hi:'#bench',lockRun:true},
   {t:()=>ampOK()===false
-     ?'⚠ Not quite — your <b>Amp</b> must border <b>both</b> Dynamos (orthogonally, no diagonals). Tap it, then tap a cell between them.'
-     :'Now the <b>Amp ✕2</b>. Boosters don\'t make charge — they multiply neighbors. Place the Amp so it borders <b>both</b> Dynamos.',
+     ?'⚠ Not quite — your <b>Amp</b> must border <b>both</b> Dynamos (orthogonally, no diagonals). Tap it, then tap an <b>empty cell</b> between them.'
+     :'Now the <b>Amp ✕2</b>. Boosters don\'t make charge — they multiply neighbors. Place the Amp on an <b>empty cell</b> so it borders <b>both</b> Dynamos.',
    done:()=>ampOK()===true,gate:true,hi:'#grid',lockRun:true},
   {t:()=>cnvFed()
      ?'Wired. The Amp doubles each Dynamo: (5⚡×2)+(5⚡×2)=20⚡ in the pool, and the Converter turns it to <b>20 output</b>. <b>NEXT.</b>'
