@@ -458,7 +458,7 @@ svg .tut-glow,.sock.tut-glow .shape{filter:drop-shadow(0 0 7px rgba(255,179,71,.
   </div>
 
   <div id="info">
-    <span id="infoText">Tap a part in a drawer to hold it, then tap its matching <b>empty</b> socket to install. Tap an <b>installed</b> socket to inspect it (and SELL / REMOVE).</span>
+    <span id="infoText">Tap a part in a drawer to hold it, then tap its matching <b>empty</b> socket to install. Tap an <b>installed</b> socket to inspect it (↩ BENCH to uninstall, or SELL for money).</span>
     <span class="act" id="infoAct"></span>
   </div>
 
@@ -1149,7 +1149,7 @@ function renderInfo(r){
   const t=$('infoText'),a=$('infoAct');a.innerHTML='';
   /* a wrong-class tap left a one-shot note: show it alongside the still-held part, then clear */
   const note=_flashNote;_flashNote=null;
-  if(!S.sel){t.innerHTML='Tap a part in a drawer to hold it, then tap its matching <b>empty</b> socket to install. Tap an <b>installed</b> socket to inspect it (and SELL / REMOVE).';return}
+  if(!S.sel){t.innerHTML='Tap a part in a drawer to hold it, then tap its matching <b>empty</b> socket to install. Tap an <b>installed</b> socket to inspect it (↩ BENCH to uninstall, or SELL for money).';return}
   if(S.sel.type==='sock'){
     const k=S.sel.k,sd=SOCKDEF[k],p=S.inst[k];
     if(p){
@@ -1162,7 +1162,8 @@ function renderInfo(r){
         cy.onclick=e=>{e.stopPropagation();cycleGlass(k)};a.appendChild(cy);
       }
       const rm=document.createElement('button');rm.className='small';
-      rm.textContent='REMOVE';rm.onclick=e=>{e.stopPropagation();removeSock(k)};a.appendChild(rm);
+      rm.textContent='↩ BENCH';rm.title='Uninstall — return this part to the parts drawer (no money)';
+      rm.onclick=e=>{e.stopPropagation();removeSock(k)};a.appendChild(rm);
       const sb=document.createElement('button');sb.className='small danger';
       sb.textContent='SELL $'+Math.floor(def.cost/2);
       sb.onclick=e=>{e.stopPropagation();sellSock(k)};a.appendChild(sb);
@@ -1239,11 +1240,14 @@ function cycleGlass(k){
   logMove({t:'glass',sock:k,stage:p.stage});
   save();render();
 }
+/* UNINSTALL — non-destructive: pull the installed part out of its socket and push it
+   whole back onto the bench/drawer inventory so it can be re-installed elsewhere. This
+   is NOT a sale (no money, nothing discarded) — sellSock() is the destructive sibling. */
 function removeSock(k){
   const p=S.inst[k];if(!p||S.running)return;
   S.inst[k]=null;S.inv.push(p);S.sel=null;
   clampDial();
-  logMove({t:'install',sock:k,id:null});
+  logMove({t:'uninstall',sock:k,id:p.id});
   save();render();
 }
 function sellSock(k){
