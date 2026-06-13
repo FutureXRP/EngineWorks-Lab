@@ -689,6 +689,11 @@ function renderInfo(){
       rb.textContent='ROTATE ⟳';
       rb.onclick=e=>{e.stopPropagation();rotateSel()};a.appendChild(rb);
     }
+    if(from==='grid'){   /* return a PLACED part to the bench without selling (terminals return early above) */
+      const bb=document.createElement('button');bb.className='small';
+      bb.textContent='↩ BENCH';
+      bb.onclick=e=>{e.stopPropagation();returnToBench(idx)};a.appendChild(bb);
+    }
     const b=document.createElement('button');b.className='small danger';
     b.textContent='SELL $'+Math.floor(def.cost/2);
     b.onclick=e=>{e.stopPropagation();sell(from,idx)};a.appendChild(b);
@@ -773,6 +778,17 @@ function sell(from,idx){
   if(from==='grid')S.grid[idx]=null;else S.bench.splice(idx,1);
   S.sel=null;
   logMove({t:'sell',from,idx,id:p.id});
+  save();render();
+}
+/* return a PLACED grid part to the bench WITHOUT selling — preserves id and rotation */
+function returnToBench(idx){
+  if(S.running)return;
+  const p=S.grid[idx];
+  if(!p)return;
+  S.grid[idx]=null;        /* vacate the cell */
+  S.bench.push(p);         /* push the FULL piece object (id, rot, thr/st) — bench has no cap */
+  S.sel=null;
+  logMove({t:'unplace',idx,id:p.id});
   save();render();
 }
 $('rerollBtn').onclick=()=>{
