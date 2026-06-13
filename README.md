@@ -38,9 +38,13 @@ The SQLite database is created at `data/ewl.sqlite` on first run
 ## The model
 
 - **Free forever:** every game is playable unranked, full physics, daily seed.
+- **Free tier has ads:** a light interstitial every few runs. A one-time
+  **$2.99 Remove Ads** purchase clears them, and **subscribers are always
+  ad-free.** Ads never touch gameplay or ranked fairness (Doctrine #4) —
+  removing them is pure convenience, never advantage.
 - **Ranked subscription ($4.99/mo):** posting scores to the daily, weekly and
-  monthly leagues. Per Bible §1.4 money buys *access to competition*, never
-  advantage — all operators play the identical seeded machine.
+  monthly leagues (and ad-free play). Per Bible §1.4 money buys *access to
+  competition*, never advantage — all operators play the identical seeded machine.
 - **Leagues (UTC):** daily `day-N` (days since 2026-01-01), weekly
   `week-YYYY-Www` (ISO week), monthly `month-YYYY-MM`. Each league is its own
   seed stream, so the weekly machine is a different puzzle from the daily one.
@@ -59,6 +63,7 @@ POST /api/auth/logout
 GET  /api/me
 POST /api/billing/subscribe          # dev provider; Stripe swap point, see below
 POST /api/billing/cancel
+POST /api/billing/remove-ads         # one-time $2.99; dev provider; sets the ads_removed entitlement
 GET  /api/leagues
 POST /api/scores        {game,league,score,round,mode,moveLog}   # 401 unauth / 402 unsubscribed
 GET  /api/leaderboard?game=&league=&period=
@@ -72,6 +77,13 @@ GET  /play/<game>?league=daily|weekly|monthly
   documented in the billing section of `server.js`: replace it with Stripe
   Checkout + a webhook writing the same `subscriptions` row. Nothing else
   changes.
+- **Ads:** the interstitial in `web/platform.js` (`_showInterstitial`) is a
+  demo placeholder shown to free players every few runs. Swap it for a real
+  network (AdMob / AppLovin in the native apps — ad inventory pays poorly on
+  web). The $2.99 Remove-Ads purchase rides the same `dev` billing provider;
+  wire it to a Stripe one-time Checkout (web) or a store IAP (apps), writing
+  the same `entitlements` row. Subscribers and buyers are gated by the
+  server-authoritative `showAds` flag.
 - **Replay validation:** scores already carry `(seed, mode, moveLog)`; add a
   headless replayer per game and validate before ranking (Bible §4).
 - **HTTPS / cookies:** put behind TLS and add `Secure` to the session cookie.

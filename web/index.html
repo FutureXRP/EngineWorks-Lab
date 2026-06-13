@@ -224,10 +224,20 @@ footer b{color:var(--ink)}
         <li>Post scores to <b>daily, weekly &amp; monthly leagues</b> across all five games</li>
         <li>Operator-mode multipliers count on the boards (MANUAL ×1.5)</li>
         <li>Move-log verified rankings — <b>no pay-to-win, ever</b></li>
+        <li><b>No ads, ever</b> — subscribers play completely ad-free</li>
         <li>Every game stays <b>free to play unranked</b>, forever</li>
       </ul>
       <button class="cta" id="subBtn">SUBSCRIBE — POST RANKED SCORES</button>
       <div class="note">Your subscription buys a seat in the competition, never an advantage inside it. Every operator plays the identical seeded machine.</div>
+    </div>
+    <div class="paycard" style="box-shadow:4px 4px 0 var(--pipe);margin-top:12px">
+      <div class="price">$2.99 <small>one-time</small></div>
+      <ul>
+        <li>Remove the ads on the free tier — play unranked, <b>ad-free, forever</b></li>
+        <li>For players who just want the ads gone without a subscription</li>
+      </ul>
+      <button class="cta" id="removeAdsBtn" style="background:var(--pipe);box-shadow:3px 3px 0 var(--ink)">REMOVE ADS — $2.99</button>
+      <div class="note">Subscribers are already ad-free, so this is only for free players.</div>
     </div>
   </section>
 
@@ -277,8 +287,10 @@ async function refreshMe(){
 function renderAcct(){
   const chip=$('acctChip');
   if(!ME){chip.innerHTML='SIGN IN';chip.onclick=()=>openAuth(false);$('acctSect').style.display='none';
-    $('subBtn').textContent='SUBSCRIBE — POST RANKED SCORES';return}
+    $('subBtn').textContent='SUBSCRIBE — POST RANKED SCORES';
+    $('removeAdsBtn').textContent='REMOVE ADS — $2.99';$('removeAdsBtn').disabled=false;return}
   const sub=ME.subscription;
+  const adFree=sub.active||!!(ME.entitlements&&ME.entitlements.adsRemoved);
   chip.innerHTML='<b>'+ME.handle+'</b> '+(sub.active?'· RANKED':'');
   chip.onclick=()=>{$('acctSect').style.display='';$('acctSect').scrollIntoView({behavior:'smooth'})};
   $('acctSect').style.display='';
@@ -288,7 +300,10 @@ function renderAcct(){
     '<div class="row"><span>Ranked access: <b class="'+(sub.active?'sub-on':'sub-off')+'">'+
       (sub.active?(sub.willRenew?'ACTIVE — renews ':'ACTIVE — ends ')+new Date(sub.renewsAt).toISOString().slice(0,10):'NOT ACTIVE')+
     '</b></span></div>'+
+    '<div class="row"><span>Ads: <b class="'+(adFree?'sub-on':'sub-off')+'">'+(adFree?'OFF — ad-free':'ON — free tier')+'</b></span></div>'+
     '<div class="row" id="acctBtns"></div>';
+  $('removeAdsBtn').textContent=adFree?'AD-FREE ✓':'REMOVE ADS — $2.99';
+  $('removeAdsBtn').disabled=adFree;
   const btns=$('acctBtns');
   if(sub.active&&sub.willRenew){
     const c=document.createElement('button');c.className='small danger';c.textContent='CANCEL RENEWAL';
@@ -308,6 +323,12 @@ async function subscribe(){
   catch(e){alert(e.message)}
 }
 $('subBtn').onclick=subscribe;
+async function removeAds(){
+  if(!ME)return openAuth(true);
+  try{await api('/api/billing/remove-ads',{method:'POST',body:'{}'});await refreshMe()}
+  catch(e){alert(e.message)}
+}
+$('removeAdsBtn').onclick=removeAds;
 
 /* ---- auth modal ---- */
 function openAuth(reg){registering=!!reg;syncAuth();$('authOv').classList.remove('hidden');$('aErr').textContent=''}

@@ -51,6 +51,7 @@
       };
       this.moveLog = [];
       this._mountBadge();
+      this._initAds();
       return this.ctx;
     },
 
@@ -83,6 +84,62 @@
         }
         return body;
       } catch (e) { /* offline play is sacred — never break the game */ }
+      finally { try { this._maybeAd(); } catch (e) {} }
+    },
+
+    /* ---- ads: free tier only. Subscribers and one-time "Remove Ads"
+     * buyers never see them; offline/standalone play never sees them. ---- */
+    _ads: { ready: false, show: false, count: 0, removeAds: { priceCents: 299 } },
+    _adEvery: 3,                          // one interstitial every Nth committed run
+    async _initAds() {
+      /* Default OFF until we confirm a free/anonymous session online; if the
+       * fetch throws (offline / file://) it stays OFF so play is never blocked. */
+      try {
+        const res = await fetch('/api/me', { credentials: 'same-origin' });
+        const b = await res.json().catch(() => ({}));
+        const u = b && b.user;
+        this._ads.show = u ? !!(u.entitlements && u.entitlements.showAds) : true;  // signed-out = free tier
+        if (b && b.removeAds) this._ads.removeAds = b.removeAds;
+        try { this._ads.count = parseInt(localStorage.getItem('ewl.adcount') || '0', 10) || 0; } catch (e) {}
+        this._ads.ready = true;
+      } catch (e) { this._ads.show = false; }
+    },
+    _maybeAd() {
+      if (!this._ads.show) return;        // subscribers / remove-ads / offline / unknown
+      this._ads.count += 1;
+      try { localStorage.setItem('ewl.adcount', String(this._ads.count)); } catch (e) {}
+      if (this._ads.count % this._adEvery !== 0) return;
+      this._showInterstitial();
+    },
+    _showInterstitial() {
+      if (!document.body || document.getElementById('ewlAd')) return;
+      const price = '$' + (((this._ads.removeAds && this._ads.removeAds.priceCents) || 299) / 100).toFixed(2);
+      const ov = document.createElement('div');
+      ov.id = 'ewlAd';
+      ov.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(8,10,9,.94);display:flex;' +
+        'flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;' +
+        'font-family:"IBM Plex Mono",ui-monospace,monospace;color:#E9E4D4';
+      ov.innerHTML =
+        '<div style="font-size:9px;letter-spacing:.2em;color:#8E9697">ADVERTISEMENT · DEMO PLACEHOLDER</div>' +
+        '<div style="font-family:\'Chakra Petch\',sans-serif;font-size:22px;letter-spacing:.06em">Your ad could be here</div>' +
+        '<div style="font-size:11px;color:#8E9697;max-width:34ch;line-height:1.5">Free players see a short ad every few runs. This stub swaps for a real ad network in the apps.</div>' +
+        '<button id="ewlAdRemove" style="margin-top:4px;font-family:\'Chakra Petch\',sans-serif;letter-spacing:.06em;border:1px solid #8A6230;background:#2A2113;color:#FFAE45;border-radius:8px;padding:10px 16px;font-size:12px;cursor:pointer">Remove ads — ' + price + ' one-time</button>' +
+        '<button id="ewlAdClose" disabled style="font-family:\'Chakra Petch\',sans-serif;letter-spacing:.1em;border:1px solid #475052;background:#1F2425;color:#8E9697;border-radius:8px;padding:8px 18px;font-size:12px">CLOSE <span id="ewlAdT">(5)</span></button>';
+      document.body.appendChild(ov);
+      document.getElementById('ewlAdRemove').onclick = () => { location.href = '/#upgrade'; };
+      const closeBtn = document.getElementById('ewlAdClose');
+      let t = 5;
+      const iv = setInterval(() => {
+        t -= 1;
+        const lab = document.getElementById('ewlAdT');
+        if (t <= 0) {
+          clearInterval(iv);
+          closeBtn.disabled = false;
+          closeBtn.style.color = '#E9E4D4'; closeBtn.style.borderColor = '#8E9697'; closeBtn.style.cursor = 'pointer';
+          closeBtn.innerHTML = 'CLOSE ✕';
+          closeBtn.onclick = () => ov.remove();
+        } else if (lab) { lab.textContent = '(' + t + ')'; }
+      }, 1000);
     },
 
     /* small fixed banner; games keep their own UI untouched */

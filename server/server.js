@@ -44,6 +44,12 @@ db.exec(`
     period_end INTEGER NOT NULL,       -- ms epoch; access until this time
     updated INTEGER NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS entitlements (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id),
+    ads_removed INTEGER NOT NULL DEFAULT 0,  -- one-time "Remove Ads" purchase
+    provider TEXT,                           -- 'dev' | 'stripe' | 'appstore' | 'play'
+    updated INTEGER NOT NULL
+  );
   CREATE TABLE IF NOT EXISTS scores (
     id INTEGER PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id),
@@ -69,6 +75,8 @@ const MODE_MULT = { ASSISTED: 1.0, STANDARD: 1.25, MANUAL: 1.5 }; // Bible §2
 const SESSION_DAYS = 30;
 const SUB_DAYS = 30;
 const PLAN = { id: 'ranked-monthly', name: 'EngineWorks Ranked', priceCents: 499, interval: 'month' };
+/* One-time purchase: removes ads on the free tier. Subscribers are always ad-free. */
+const REMOVE_ADS = { id: 'remove-ads', name: 'Remove Ads', priceCents: 299, type: 'one_time' };
 
 /* ============ league periods (UTC, Bible §4 epoch) ============ */
 const EPOCH = Date.UTC(2026, 0, 1);
@@ -127,6 +135,18 @@ function subStatus(userId) {
     renewsAt: row ? row.period_end : null,
     willRenew: !!row && row.status === 'active',
   };
+}
+function entitlements(userId) {
+  const row = db.prepare('SELECT ads_removed FROM entitlements WHERE user_id = ?').get(userId);
+  return { adsRemoved: !!(row && row.ads_removed) };
+}
+/* The single public shape for a logged-in user. `showAds` is authoritative:
+ * subscribers are always ad-free; the one-time purchase also removes ads. */
+function publicUser(u) {
+  const subscription = subStatus(u.id);
+  const ent = entitlements(u.id);
+  const showAds = !subscription.active && !ent.adsRemoved;
+  return { id: u.id, handle: u.handle, email: u.email, subscription, entitlements: { ...ent, showAds } };
 }
 
 /* ============ http plumbing ============ */
@@ -200,10 +220,8 @@ const api = {
   async 'GET /api/me'(req, res) {
     const sess = getSessionUser(req);
     const p = periods();
-    const body = { leagues: p, plan: PLAN, user: null };
-    if (sess) {
-      body.user = { id: sess.id, handle: sess.handle, email: sess.email, subscription: subStatus(sess.id) };
-    }
+    const body = { leagues: p, plan: PLAN, removeAds: REMOVE_ADS, user: null };
+    if (sess) body.user = publicUser(sess);
     return send(res, 200, body);
   },
 
@@ -231,6 +249,18 @@ const api = {
     if (!sess) return send(res, 401, { error: 'sign in first' });
     db.prepare("UPDATE subscriptions SET status='canceled', updated=? WHERE user_id=?").run(Date.now(), sess.id);
     return send(res, 200, { ok: true, subscription: subStatus(sess.id) });
+  },
+  /* One-time "Remove Ads" purchase (dev provider). Production: a Stripe
+   * one-time Checkout (or App Store / Play one-time IAP); the webhook /
+   * receipt validation writes this same entitlements row. */
+  async 'POST /api/billing/remove-ads'(req, res) {
+    const sess = getSessionUser(req);
+    if (!sess) return send(res, 401, { error: 'sign in first' });
+    const now = Date.now();
+    db.prepare(`INSERT INTO entitlements (user_id,ads_removed,provider,updated) VALUES (?,1,?,?)
+                ON CONFLICT(user_id) DO UPDATE SET ads_removed=1, provider=excluded.provider, updated=excluded.updated`)
+      .run(sess.id, 'dev', now);
+    return send(res, 200, { ok: true, entitlements: entitlements(sess.id) });
   },
 
   /* ---- leagues & scores ---- */
@@ -306,7 +336,7 @@ function loginUser(res, userId) {
   db.prepare('INSERT INTO sessions (token,user_id,created,expires) VALUES (?,?,?,?)')
     .run(token, userId, now, now + SESSION_DAYS * 86400000);
   const u = db.prepare('SELECT id,handle,email FROM users WHERE id=?').get(userId);
-  return send(res, 200, { user: { ...u, subscription: subStatus(userId) } }, {
+  return send(res, 200, { user: publicUser(u) }, {
     'Set-Cookie': `ewl_session=${token}; Max-Age=${SESSION_DAYS * 86400}; Path=/; HttpOnly; SameSite=Lax`,
   });
 }
