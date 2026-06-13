@@ -190,11 +190,11 @@ button.danger{border-color:#6B3A33;color:var(--red)}
 <div class="overlay" id="introOv">
   <div class="modal">
     <h2>DY<span>NAMO</span> · the daily engine</h2>
-    <p>Build a machine that beats an <b>escalating quota</b> every round — same seed for everyone today. Each run resolves in order: <b>stored charge releases → generators fire (reading order) → converters drink the pool → capacitors bank leftovers ≤40⚡ → anything left is WASTED</b>.</p>
+    <p>Build a machine that beats an <b>escalating quota</b> every round — same seed for everyone today. Each run resolves in order: <b>stored charge releases → generators fire (reading order) → converters drink the pool → capacitors bank leftovers ≤40⚡ → overflow trickle-converts (◬ spill) → the rest is WASTED</b>. Expand the floor (<b>+ROW</b>, up to 12) and reinvest <b>ahead</b> of the curve.</p>
     <div class="legend">
-      <span class="ic" style="color:var(--amber)">⚙ ☢ 🌀</span><span><b>Generators</b> — make ⚡ charge into the shared pool</span>
-      <span class="ic" style="color:var(--gold)">✕2 ↻ ▲</span><span><b>Boosters</b> — Amps/Coils multiply neighbors · Relays trigger neighbors twice · Overclock +4⚡ base globally</span>
-      <span class="ic" style="color:var(--green)">▸ ▸▸</span><span><b>Converters</b> — turn pooled ⚡ into points, in reading order</span>
+      <span class="ic" style="color:var(--amber)">⚙ ☢ 🌀 ▲▲</span><span><b>Generators</b> — make ⚡ charge into the shared pool · <b>Surge Cell ▲▲</b> doubles itself each round in place</span>
+      <span class="ic" style="color:var(--gold)">✕2 ↻ ◬ ▲</span><span><b>Boosters</b> — Amps/Coils multiply neighbors (Flux Lens ◬ doubles one) · Relays double bordering converter capacity · Overclock +4⚡ globally</span>
+      <span class="ic" style="color:var(--green)">▸ ▸▸ ╪</span><span><b>Converters</b> — turn pooled ⚡ into points, in reading order · <b>Manifold ╪</b> banks capacity per neighbor</span>
       <span class="ic" style="color:var(--olive)">◎</span><span><b>Capacitor</b> — banks ≤40⚡ leftover for next run</span>
       <span class="ic" style="color:var(--olive)">◉ ◫</span><span><b>Fuse</b> burns to absorb a missed quota · <b>Meter</b> restores readouts in MANUAL</span>
     </div>
@@ -256,20 +256,34 @@ const PARTS={
     d:'Adjacent parts trigger twice: generators ×(1+relays) output, converters ×(1+relays) capacity.'},
   ovc:{n:'Overclock',ic:'▲',cl:'bst',cost:8,rar:'u',tag:'+4⚡',
     d:'Global. Every generator gains <b>+4⚡ base</b> per Overclock, anywhere on the grid.'},
+  surge:{n:'Surge Cell',ic:'▲▲',cl:'gen',cost:9,rar:'r',tag:'2⚡↑↑',
+    d:'Generator. <b>2⚡</b> base that <b>doubles every round it stays in the same cell</b>. <b>Moving it resets to 2⚡.</b> The long-game compounding plant — commit it early, leave it untouched, and feed its overflow to a relay-stacked converter bank.'},
+  edge:{n:'Edge Tap',ic:'⌐',cl:'gen',cost:5,rar:'u',tag:'4+4/□',
+    d:'Generator. <b>4⚡</b> base, <b>+4⚡ per adjacent EMPTY cell</b>. Rewards sparse, breathing-room builds — the opposite of amp clusters.'},
   cnv:{n:'Converter',ic:'▸',cl:'cnv',cost:4,rar:'c',tag:'≤30⚡',
-    d:'Drinks up to <b>30⚡</b> from the pool at <b>1pt per ⚡</b>, in reading order.'},
+    d:'Drinks up to <b>30⚡</b> from the pool at <b>1pt per ⚡</b>, in reading order. Cap <b>doubles per adjacent Relay</b>. Overflow it can\'t hold spills at a trickle rate.'},
   ref:{n:'Refinery',ic:'▸▸',cl:'cnv',cost:7,rar:'u',tag:'≤60⚡',
-    d:'Drinks up to <b>60⚡</b> from the pool at <b>1.5pt per ⚡</b>, in reading order.'},
+    d:'Drinks up to <b>60⚡</b> from the pool at <b>1.5pt per ⚡</b>, in reading order. Cap <b>doubles per adjacent Relay</b> — relay-stack a Refinery to drain a huge pool.'},
+  mani:{n:'Manifold',ic:'╪',cl:'cnv',cost:8,rar:'u',tag:'25+15/▸',
+    d:'Converter. <b>25⚡</b> base at <b>1pt per ⚡</b>, <b>+15⚡ capacity per adjacent converter-class part</b>. Turns a row of converters into a draining bank.'},
   cap:{n:'Capacitor',ic:'◎',cl:'sto',cost:5,rar:'u',
     d:'Banks up to <b>40⚡</b> of leftover charge after converters drink; releases it into next run\'s pool.'},
+  lens:{n:'Flux Lens',ic:'◬',cl:'bst',cost:10,rar:'r',tag:'×2 mult',
+    d:'Booster. <b>Doubles the multiplier</b> of its single strongest adjacent Amp/Coil (×2→×4, ×3→×6). Late-game multiplier scaling without spamming amps.'},
   fus:{n:'Fuse',ic:'◉',cl:'utl',cost:12,rar:'r',tag:'ins',
     d:'Insurance. On a missed quota one Fuse <b>burns</b> (removed from the grid) to preserve your streak and base pay.'},
   mtr:{n:'Meter',ic:'◫',cl:'utl',cost:4,rar:'c',tag:'gauge',
     d:'Gauge. No effect in the sim. In <b>MANUAL</b> mode: one Meter on the grid restores the projected total; a second restores the waste figure.'},
 };
 const GENBASE={dyn:5,rea:12,tbn:20};
-const CNVDEF={cnv:{cap:30,rate:1},ref:{cap:60,rate:1.5}};
-const POOL=[['dyn',18],['cnv',16],['amp',15],['rea',10],['rel',9],['ref',9],['ovc',8],['cap',8],['mtr',6],['tbn',6],['coil',6],['fus',4]];
+/* Surge Cell is the long-game compounding spine: 2⚡ base, doubles every round it stays put.
+   The spec's nominal cap was 32⚡ (reached in ~4 rounds) — far too low to compound a 100+ game,
+   so per the overriding "Forecasting to 100+" contract the cap is raised to 2^16 so a committed,
+   undisturbed Surge Cell keeps scaling for ~15 rounds. SPILL trickle-converts the overflow a
+   relay-stacked converter bank can't hold, so the geometric surge pool chases the quota tail. */
+const SURGE_BASE=2,SURGE_CAP=65536,SPILL=0.04;
+const CNVDEF={cnv:{cap:30,rate:1},ref:{cap:60,rate:1.5},mani:{cap:25,rate:1}};
+const POOL=[['dyn',16],['cnv',14],['amp',14],['rea',10],['rel',10],['ref',9],['ovc',8],['cap',8],['mtr',6],['tbn',6],['coil',7],['surge',6],['lens',5],['mani',6],['edge',6],['fus',4]];
 const RARMULT={c:r=>Math.max(.4,1-.06*(r-1)),u:r=>1+.05*(r-1),r:r=>1+.12*(r-1)};
 function rollPart(){
   const w=POOL.map(([id,base])=>[id,base*RARMULT[PARTS[id].rar||'c'](S.round)]);
@@ -278,7 +292,7 @@ function rollPart(){
 }
 
 /* ============ state ============ */
-const COLS=4,MAXROWS=7,ROWCOST=[12,20,28];
+const COLS=4,MAXROWS=12,ROWCOST=[12,20,28,40,55,72,92,115];  /* cost to go from rows r → r+1, indexed [r-4] */
 const MULT={ASSISTED:1,STANDARD:1.25,MANUAL:1.5};
 let S,settings,meta;
 function freshState(){
@@ -298,7 +312,11 @@ function fresh(){
   meta={created:Date.now(),updated:Date.now(),dayNum,seed:seedString};
   _raw=mulberry32(strSeed(seedString));
 }
-function quota(n){return Math.round(15*Math.pow(1.5,n-1))}
+/* soft-knee quota: matches the old round(15×1.5^(n-1)) feel up to the knee, then a gentle
+   compounding tail tuned by simulation so a forecasting build can chase it to 100+ while
+   a passive build walls in the twenties. (DESIGN CONTRACT: "Forecasting to 100+".) */
+const Q_BASE=15,Q_EARLY=1.5,Q_KNEE=9,Q_TAIL=1.045;
+function quota(n){return Math.round(Q_BASE*Math.pow(Q_EARLY,Math.min(n,Q_KNEE)-1)*Math.pow(Q_TAIL,Math.max(0,n-Q_KNEE)))}
 const RANKS=[[24,'Ascendant'],[18,'Grand Dynamo'],[14,'Master Operator'],[10,'Chief Engineer'],[7,'Engineer'],[4,'Operator'],[1,'Apprentice']];
 function rank(n){for(const[t,nm]of RANKS)if(n>=t)return nm;return 'Apprentice'}
 
@@ -322,7 +340,7 @@ function save(){
   meta.updated=Date.now();
   try{
     localStorage.setItem(saveKey,JSON.stringify({
-      schema:1,
+      schema:2,
       state:Object.assign({},S,{sel:null,running:false}),
       settings:{mode:settings.mode},
       meta,
@@ -335,7 +353,7 @@ function load(){
   if(!raw)return 'none';
   let d=null;
   try{d=JSON.parse(raw)}catch(e){return 'bad'}
-  if(!d||d.schema!==1||!d.state||!d.settings)return 'bad';
+  if(!d||d.schema!==2||!d.state||!d.settings)return 'bad';
   if(!d.meta||d.meta.seed!==seedString)return 'stale'; /* new seed (new period) → new engine */
   S=d.state;S.sel=null;S.running=false;
   settings=d.settings;meta=d.meta;
@@ -347,51 +365,99 @@ function load(){
 }
 
 /* ============ simulation ============ */
-/* Pure: never mutates S. Resolution per spec:
+/* Pure: never mutates S. Resolution order:
    1) capacitor stored charge → pool
-   2) generators fire in reading order
-   3) converters drink the pool in reading order
+   2) generators fire in reading order (Dynamo/Reactor/Turbine/Surge/Edge), boosted by
+      adjacent amp/coil (Flux-Lens-doubled) multiplicatively × (1+adjacent relays)
+   3) converters drink the pool in reading order; cap doubles per adjacent relay (×2^relays);
+      Manifold gains +15 per adjacent converter-class part
    4) capacitors store leftovers ≤40 each
-   5) remainder WASTED */
+   5) SPILL: any pool a converter exists to receive converts at the SPILL trickle rate; the
+      remainder is WASTED. (Spill keeps a huge compounding pool from being pure waste, so the
+      long-game ceiling can chase the quota tail — but full-rate capacity always wins.) */
+function genBase(p,i,G,rows){
+  if(GENBASE[p.id]!==undefined)return GENBASE[p.id];
+  if(p.id==='surge')return p.surge||SURGE_BASE;
+  if(p.id==='edge'){let e=0;for(const j of adjN(i,rows))if(!G[j])e++;return 4+4*e;}
+  return null;
+}
+function adjN(i,rows){
+  const r=Math.floor(i/COLS),c=i%COLS,a=[];
+  if(r>0)a.push(i-COLS);
+  if(r<rows-1)a.push(i+COLS);
+  if(c>0)a.push(i-1);
+  if(c<COLS-1)a.push(i+1);
+  return a;
+}
 function sim(){
-  const N=S.rows*COLS,G=S.grid;
+  const N=S.rows*COLS,G=S.grid,rows=S.rows;
   const oc=G.reduce((a,p)=>a+(p&&p.id==='ovc'?1:0),0);
-  let pool=0,pts=0;
+  let pool=0,pts=0,spillPts=0;
   const ev=[],per={},st={};
+  /* 1) capacitor release */
   for(let i=0;i<N;i++){
     const p=G[i];
     if(p&&p.id==='cap'&&(p.st||0)>0){pool+=p.st;ev.push({cell:i,k:'rel',a:p.st})}
   }
+  /* Flux Lens precompute: each lens doubles the multiplier of its single strongest adjacent
+     amp/coil. Each boosted amp/coil can be claimed by only one lens. */
+  const lensB={};
   for(let i=0;i<N;i++){
-    const p=G[i];
-    if(!p||!GENBASE[p.id])continue;
+    const p=G[i];if(!p||p.id!=='lens')continue;
+    let best=-1,bestv=0;
+    for(const j of adjN(i,rows)){
+      const q=G[j];if(!q||lensB[j])continue;
+      const v=q.id==='coil'?3:q.id==='amp'?2:0;
+      if(v>bestv){bestv=v;best=j}
+    }
+    if(best>=0)lensB[best]=true;
+  }
+  const multAt=j=>{
+    const q=G[j];if(!q)return 1;
+    let m=q.id==='amp'?2:q.id==='coil'?3:1;
+    if(m>1&&lensB[j])m*=2;
+    return m;
+  };
+  /* 2) generators */
+  for(let i=0;i<N;i++){
+    const p=G[i];if(!p)continue;
+    const base=genBase(p,i,G,rows);
+    if(base===null)continue;
     let mult=1,rc=0;
-    for(const j of adj(i)){
+    for(const j of adjN(i,rows)){
       const q=G[j];if(!q)continue;
-      if(q.id==='amp')mult*=2;
-      else if(q.id==='coil')mult*=3;
+      if(q.id==='amp'||q.id==='coil')mult*=multAt(j);
       else if(q.id==='rel')rc++;
     }
-    const out=(GENBASE[p.id]+4*oc)*mult*(1+rc);
+    const out=(base+4*oc)*mult*(1+rc);
     pool+=out;per[i]={k:'gen',out};ev.push({cell:i,k:'gen',a:out});
   }
+  /* 3) converters */
   for(let i=0;i<N;i++){
-    const p=G[i];
-    if(!p||!CNVDEF[p.id])continue;
-    let rc=0;
-    for(const j of adj(i)){const q=G[j];if(q&&q.id==='rel')rc++}
-    const cap=CNVDEF[p.id].cap*(1+rc);
+    const p=G[i];if(!p||!CNVDEF[p.id])continue;
+    let rc=0,nc=0;
+    for(const j of adjN(i,rows)){const q=G[j];if(!q)continue;if(q.id==='rel')rc++;else if(CNVDEF[q.id])nc++}
+    let cap=CNVDEF[p.id].cap;
+    if(p.id==='mani')cap+=15*nc;          /* Manifold: +15 per adjacent converter-class part */
+    cap=cap*Math.pow(2,rc);                /* relays double capacity, multiplicatively */
     const drink=Math.min(pool,cap);pool-=drink;
     const gain=Math.floor(drink*CNVDEF[p.id].rate);
     pts+=gain;per[i]={k:'cnv',drink,gain,cap};ev.push({cell:i,k:'cnv',a:gain,d:drink});
   }
+  /* 4) capacitors bank */
   for(let i=0;i<N;i++){
-    const p=G[i];
-    if(!p||p.id!=='cap')continue;
+    const p=G[i];if(!p||p.id!=='cap')continue;
     const keep=Math.min(pool,40);pool-=keep;
     st[i]=keep;ev.push({cell:i,k:'sto',a:keep});
   }
-  return{pts,wasted:pool,ev,per,st};
+  /* 5) spill trickle (only if any converter exists to receive it) */
+  const hasConv=G.some(p=>p&&CNVDEF[p.id]);
+  if(hasConv&&pool>0&&SPILL>0){
+    spillPts=Math.floor(pool*SPILL);
+    if(spillPts>0){pts+=spillPts;ev.push({cell:-1,k:'spill',a:spillPts,d:pool});}
+    pool=0;
+  }
+  return{pts,wasted:pool,spillPts,ev,per,st};
 }
 
 /* ============ operator modes: the ONE display gate (Bible §2) ============ */
@@ -417,6 +483,7 @@ function pieceEl(p,from,idx,per){
     const info=per?per[idx]:null;
     if(p.id==='cap')rd=`<div class="rd st">${p.st||0}/40⚡</div>`;
     else if(info&&info.k==='gen')rd=`<div class="rd pw">+${info.out}⚡</div>`;
+    else if(p.id==='surge')rd=`<div class="rd st">${p.surge||SURGE_BASE}⚡↑</div>`;
     else if(info&&info.k==='cnv')rd=`<div class="rd wt">${info.gain}pt</div>`;
     else rd=`<div class="rd">${def.tag||''}</div>`;
   }else{
@@ -527,6 +594,8 @@ function moveSelTo(i){
   if(!moving){S.sel=null;render();return}
   if(from==='grid'){S.grid[idx]=null}        /* origin empties */
   else{S.bench.splice(idx,1)}                  /* leaves the bench */
+  /* Surge Cell placement-commitment: any move/placement resets its compounding to base */
+  if(moving.id==='surge'){moving.surge=SURGE_BASE;moving.moved=true}
   S.grid[i]=moving;
   S.sel={from:'grid',idx:i};
   logMove({t:'place',from,fi:idx,to:i});
@@ -540,7 +609,7 @@ function buy(i){
   const id=S.shop[i],def=PARTS[id];
   if(S.money<def.cost||S.sold[i])return;
   S.money-=def.cost;S.sold[i]=true;
-  const p={id};if(id==='cap')p.st=0;
+  const p={id};if(id==='cap')p.st=0;if(id==='surge'){p.surge=SURGE_BASE;p.moved=true}
   S.bench.push(p);
   S.sel={from:'bench',idx:S.bench.length-1};
   logMove({t:'buy',slot:i,id});
@@ -598,7 +667,7 @@ async function runEngine(){
   const cells=gridEl.children;
   let acc=0;
   for(const e of f.ev){
-    const cell=cells[e.cell];
+    const cell=e.cell>=0?cells[e.cell]:null;
     if(e.k==='rel'){
       cell.classList.add('firing-st');flash(cell,'▥+'+e.a+'⚡','store');
       await sleep(reduced?0:200);cell.classList.remove('firing-st');
@@ -613,12 +682,23 @@ async function runEngine(){
     }else if(e.k==='sto'){
       cell.classList.add('firing-st');flash(cell,'▥ bank '+e.a+'⚡','store');
       await sleep(reduced?0:200);cell.classList.remove('firing-st');
+    }else if(e.k==='spill'){
+      acc+=e.a;S.lastRun=acc;tickGauge();
+      await sleep(reduced?0:200);
     }
   }
   /* commit capacitor charge */
   for(let i=0;i<S.grid.length;i++){
     const p=S.grid[i];
     if(p&&p.id==='cap')p.st=f.st[i]||0;
+  }
+  /* commit Surge Cell compounding: a surge cell that has NOT moved this round doubles its
+     base (cap SURGE_CAP). p.moved is set on placement; cleared here after settling. */
+  for(const p of S.grid){
+    if(p&&p.id==='surge'){
+      if(p.moved){p.surge=SURGE_BASE;p.moved=false}
+      else p.surge=Math.min(SURGE_CAP,(p.surge||SURGE_BASE)*2);
+    }
   }
   S.lastRun=f.pts;tickGauge();
   await sleep(reduced?100:450);
@@ -629,14 +709,19 @@ async function runEngine(){
   S.raw=(S.raw||0)+f.pts;   /* raw total: server applies the mode multiplier (it is authoritative) */
   const banked=Object.values(f.st).reduce((a,b)=>a+b,0);
   let diag='';
-  if(f.wasted>0)diag+=`<br><br><b style="color:var(--red)">WASTED ${f.wasted}⚡</b> — charge above conversion capacity at your converters. Add ▣/⬡ capacity, relay-boost one, or bank it in a ▥ Capacitor.`;
-  if(banked>0)diag+=`<br>▥ banked <b>${banked}⚡</b> for next run.`;
+  if(f.spillPts>0)diag+=`<br><br>◬ <b>spill +${f.spillPts}pt</b> — overflow your converters couldn't hold, trickle-converted. Relay-stack a Refinery or add a Manifold to convert it at full rate instead.`;
+  if(f.wasted>0)diag+=`<br><br><b style="color:var(--red)">WASTED ${f.wasted}⚡</b> — charge above conversion capacity at your converters. Add ▸/▸▸ capacity, relay-boost one, or bank it in a ◎ Capacitor.`;
+  if(banked>0)diag+=`<br>◎ banked <b>${banked}⚡</b> for next run.`;
 
   if(f.pts>=q){
     S.streak+=1;S.adv=true;
-    const surplus=Math.min(3,Math.floor((f.pts/q-1)*4));
-    const interest=Math.min(4,Math.floor(S.money/5));
-    const streakB=Math.min(5,S.streak-1);
+    /* Economy (Bible §3 shape, FLOOR=4). Caps widened from the base template so an engineer who
+       OVERSHOOTS (surplus), BANKS credits (interest) and holds a STREAK accumulates the capital to
+       reinvest ahead of the curve — expand, sell-up to better generators, commit Surge Cells. Brute
+       force without that reinvestment still walls. (DESIGN CONTRACT: reinvestment correct AND necessary.) */
+    const surplus=Math.min(6,Math.floor((f.pts/q-1)*6));
+    const interest=Math.min(8,Math.floor(S.money/4));
+    const streakB=Math.min(8,S.streak-1);
     const earn=4+n+surplus+interest+streakB;
     S.money+=earn;
     $('roundTitle').innerHTML='QUOTA <span>MET</span>';
@@ -768,7 +853,7 @@ const TSTEPS=[
   /* ---- PHASE 3: each mechanic, one at a time, with a highlight ---- */
   {t:()=>'<b>Multipliers stack multiplicatively.</b> An <b>Amp ✕2</b> and a <b>Coil ✕3</b> both touching one generator give ×6, not ×5. Cluster boosters around your strongest plant. <b>NEXT.</b>',
    hi:'#grid'},
-  {t:()=>'<b>Relay ↻</b> — every adjacent part triggers twice: bordering generators output ×(1+relays), bordering converters get ×(1+relays) capacity. One Relay between a plant and a converter pumps both. <b>NEXT.</b>',
+  {t:()=>'<b>Relay ↻</b> super-charges its neighbors: bordering generators output ×(1+relays), and bordering converters get their capacity <b>doubled per relay</b> (×2, ×4, ×8…). <b>Relay-stacking a Refinery</b> is how you drain a huge late-game pool. <b>NEXT.</b>',
    hi:'#grid'},
   {t:()=>'<b>Overclock ▲</b> is global: +4⚡ <b>base</b> to every generator on the grid, no adjacency needed — and that +4 lands <b>before</b> multipliers, so amps and coils scale it too. <b>NEXT.</b>',
    hi:null},
@@ -778,10 +863,12 @@ const TSTEPS=[
    hi:'#shop'},
   {t:()=>'<b>Capacitor ◎</b> banks up to 40⚡ of <b>leftover</b> charge after converters drink, then dumps it into next run\'s pool. It turns an overbuilt core\'s overflow into a head start. <b>NEXT.</b>',
    hi:null},
+  {t:()=>'<b>The long game — Surge Cell ▲▲.</b> Starts at 2⚡ but <b>doubles every round you leave it untouched</b> (moving resets it). Commit one early, never touch it, and feed its swelling pool to a relay-stacked Refinery bank — that compounding is how engines reach round 100+. Also new: <b>Flux Lens ◬</b> (doubles a neighbor\'s ×mult), <b>Manifold ╪</b> (capacity per adjacent converter), <b>Edge Tap ⌐</b> (pays for empty space). <b>NEXT.</b>',
+   hi:'#shop'},
   /* ---- PHASE 4: the failure / diagnostic vocabulary ---- */
   {t:()=>'Now the words the machine uses when something\'s off. <b>WASTED</b> ⚡ = charge your converters couldn\'t drink. In ASSISTED it shows in the ghost line as "⚠ n⚡ waste"; the run report always spells it out. <b>NEXT.</b>',
    hi:'.gauge-wrap'},
-  {t:()=>'Three fixes for <b>WASTED</b>: (1) add converter capacity — a Converter/Refinery, or relay-boost one; (2) bank the overflow in a <b>Capacitor ◎</b>; (3) if you truly can\'t use it, a Scrapper turns waste into cash. Never let charge evaporate for free. <b>NEXT.</b>',
+  {t:()=>'Fixes for <b>WASTED</b>: add converter capacity — a Converter/Refinery, or <b>relay-stack</b> one to double its appetite; or bank the overflow in a <b>Capacitor ◎</b>. A converter on the grid also <b>trickle-converts (◬ spill)</b> overflow it can\'t hold, so charge is never lost outright — but full-rate capacity always scores far more. <b>NEXT.</b>',
    hi:null},
   {t:()=>'<b>STALLED</b> = you missed the quota. No death here: you get a <b>$2</b> subsidy, your streak resets to 0, and the <b>same quota waits</b> next round. There is always a way forward. <b>NEXT.</b>',
    hi:null},
@@ -793,10 +880,10 @@ const TSTEPS=[
   {t:()=>'<b>Economy</b>, one line: on a clear you earn <b>base (4+round) + surplus (for overshooting) + interest (on saved credits) + streak</b>. Bank credits to earn interest, keep streaks alive, and don\'t over-spend the reroll. <b>NEXT.</b>',
    hi:'#stMoney'},
   /* ---- PHASE 6: a concrete winning opening ---- */
-  {t:()=>'<b>A winning round-1 opening:</b> your two Dynamos + Amp already make 20⚡ vs the 15 quota — you\'re clear. Spend the payout on a <b>second Converter</b> or a <b>Reactor ☢ (12⚡)</b> so next round\'s 23 quota is comfortable. Grow capacity a step ahead of the quota. <b>NEXT.</b>',
-   hi:'#shop'},
+  {t:()=>'<b>A winning round-1 opening:</b> your two Dynamos + Amp already make 20⚡ vs the 15 quota — you\'re clear. Spend the payout on a <b>second Converter</b> or a <b>Reactor ☢ (12⚡)</b>, and press <b>+ROW</b> to grow the floor (up to 12 rows) a step <b>ahead</b> of the quota. <b>NEXT.</b>',
+   hi:'#rowBtn'},
   /* ---- PHASE 7: free-play sign-off ---- */
-  {t:()=>'That\'s the whole machine. Quotas climb ~50% a round, so keep your engine growing faster than they do. Tap <b>❔ HELP</b> in the header anytime to replay this. Good luck, operator.',
+  {t:()=>'That\'s the whole machine. Quotas climb fast early, then settle into a relentless creep — so reinvest <b>ahead</b> of the curve: sell up to better generators, expand the floor, and commit a <b>Surge Cell</b> early to compound. Intuition reaches the twenties; forecasting reaches <b>100+</b>. Tap <b>❔ HELP</b> anytime. Good luck, operator.',
    hi:null,final:true},
 ];
 /* index of the first run-capable step (RUN stays locked before it) */
