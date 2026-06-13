@@ -1,0 +1,12 @@
+{
+  "name": "engineworks-lab",
+  "version": "1.0.0",
+  "private": true,
+  "description": "EngineWorks Lab — invented machines, honest physics. Daily seeded puzzle catalog with accounts, ranked leagues and leaderboards.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server/server.js"
+  }
+}

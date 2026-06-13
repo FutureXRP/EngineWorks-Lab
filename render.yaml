@@ -1,0 +1,22 @@
+# Render Blueprint — one-click deploy from GitHub (see HOW-TO-RUN.md, option 3).
+# New → Blueprint → pick this repo → Apply.
+services:
+  - type: web
+    name: engineworks-lab
+    runtime: node
+    plan: free
+    buildCommand: npm install   # zero dependencies; just satisfies the build step
+    startCommand: npm start     # node server/server.js
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+    # The free plan has no persistent disk, so the SQLite database (accounts,
+    # leaderboards) resets when the service restarts. For durable data, switch
+    # `plan: free` to a paid instance and uncomment the disk + EWL_DATA_DIR:
+    #
+    #   - key: EWL_DATA_DIR
+    #     value: /var/data
+    # disk:
+    #   name: ewl-data
+    #   mountPath: /var/data
+    #   sizeGB: 1
